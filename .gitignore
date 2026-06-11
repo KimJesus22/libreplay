@@ -1,0 +1,26 @@
+# Dependencias
+node_modules/
+
+# Builds
+dist/
+build/
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Datos locales de Docker
+.data/
+minio-data/
+postgres-data/
+
+# Logs y temporales
+*.log
+tmp/
+
+# IDE / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
