@@ -21,9 +21,9 @@
                    │  │  BullMQ   │      │  (pipeline IA)   │
                    │  └──────────┘      └───┬────┬────┬────┘
                    ▼                        │    │    │
-            ┌──────────────┐        Whisper │ Claude │ Voyage
-            │ Cloudflare R2 │◀──────────────┘  API   │ (embeddings)
-            │ (videos MP4)  │   descarga audio       │
+            ┌──────────────┐        Whisper │ Ollama │ Ollama
+            │ Cloudflare R2 │◀──────────────┘  (LLM) │ bge-m3
+            │ (videos MP4)  │   descarga audio       │ (embeddings)
             └──────────────┘
 ```
 
@@ -42,8 +42,8 @@ Dos procesos Node a partir del mismo monorepo NestJS:
 | Colas | **Redis 7 + BullMQ** | El pipeline IA tarda minutos: no puede vivir en el request HTTP. BullMQ da reintentos con backoff, progreso y dead-letter sin infraestructura extra (Redis ya sirve de caché). |
 | Almacenamiento | **Cloudflare R2** (API S3) | Egress **gratis** — crítico para streaming de video con presupuesto cero. Soporta peticiones `Range` sobre URLs prefirmadas → el seek (206) sale directo de R2, sin pasar por la API. En dev local se sustituye por **MinIO** (mismo SDK S3). |
 | Transcripción | **faster-whisper** (contenedor propio, modelo `small`) | Claude no transcribe audio. Whisper local = costo cero y sin límites de cuota; corre en el compose. Alternativa si el host es muy limitado: API de Groq (Whisper, capa gratuita). |
-| Metadata IA | **Claude API** — `claude-opus-4-8`, SDK oficial `@anthropic-ai/sdk` | A partir de la transcripción genera sinopsis, categorías y etiquetas con **structured outputs** (`output_config.format` + schema Zod): JSON válido garantizado, sin parseo frágil. Son pocas llamadas (1 por video subido), costo marginal. Si el presupuesto aprieta, bajar a `claude-haiku-4-5` es un cambio de una línea — decisión del autor. |
-| Embeddings | **Voyage AI** (`voyage-3.5-lite`, multilingüe, capa gratuita) | Anthropic no ofrece endpoint de embeddings; Voyage es su proveedor recomendado. Multilingüe → funciona con contenido en español. Vector de la sinopsis+transcripción → pgvector. |
+| Metadata IA | **Ollama** local (`qwen2.5:3b-instruct`) tras un puerto `MetadataGenerator` | **Costo $0 absoluto**: el LLM corre en el compose, sin API key ni cuota. Genera sinopsis, categorías y etiquetas desde la transcripción con salida JSON forzada por schema (`format` de Ollama) + validación Zod. El puerto hexagonal permite enchufar un adaptador Claude (`@anthropic-ai/sdk`) cambiando una variable de entorno si algún día hay presupuesto — y es un buen punto de diseño para la entrevista. |
+| Embeddings | **Ollama** local (`bge-m3`, multilingüe, 1024 dims) | Costo $0 y sin cuota (vs Voyage/OpenAI: gratis pero con límites y key). Multilingüe → funciona con contenido en español; 1024 dimensiones encajan con `vector(1024)`. Mismo modelo embebe documentos y queries → consistencia en la búsqueda semántica. |
 | Frontend | **Astro + TypeScript + Tailwind CSS** | El sitio es mayormente contenido (catálogo, detalle): la arquitectura de islas de Astro envía ~0 JS por defecto y solo hidrata lo interactivo (player, búsqueda, formularios) — mejor rendimiento que una SPA y un argumento técnico distinto al típico portafolio React. Islas en TS vanilla/componentes Astro, sin framework extra. Reproductor: `<video>` nativo (MP4/H.264 no necesita hls.js — fuera de scope la transcodificación). |
 | Docs API | **Swagger** vía `@nestjs/swagger` | Métrica de éxito §8.3, servido en `/docs`. |
 
@@ -117,25 +117,27 @@ model WatchProgress { @@id([userId, videoId]); positionS Int; updatedAt DateTime
 ```
 upload completado
    └─▶ job: transcribe   (faster-whisper sobre el audio extraído con ffmpeg)
-         └─▶ job: metadata    (Claude: sinopsis + categorías + tags, structured output)
-               └─▶ job: embed (Voyage: vector de sinopsis+transcript → pgvector)
+         └─▶ job: metadata    (Ollama LLM: sinopsis + categorías + tags, JSON por schema)
+               └─▶ job: embed (Ollama bge-m3: vector de sinopsis+transcript → pgvector)
                      └─▶ video.status = READY (uploader revisa y publica — HU-04)
 ```
 
 - Cada etapa es un job independiente: reintentos (3, backoff exponencial) y fallo aislado.
 - **Fallo total del pipeline** → `status = READY` con campos IA vacíos: publicable manualmente (criterio §6.2).
-- Llamada a Claude (worker, TypeScript):
+- La generación de metadata vive detrás de un puerto, con Ollama como adaptador por defecto:
 
 ```ts
-const response = await client.messages.parse({
-  model: "claude-opus-4-8",
-  max_tokens: 2048,
-  messages: [{ role: "user", content: buildPrompt(transcript, title) }],
-  output_config: { format: zodOutputFormat(VideoMetadataSchema) }, // { synopsis, categories[], tags[] }
-});
+interface MetadataGenerator {
+  generate(transcript: string, title: string): Promise<VideoMetadata>; // validado con Zod
+}
+
+// OllamaMetadataGenerator (default, $0): POST /api/chat con
+// { model: "qwen2.5:3b-instruct", format: zodToJsonSchema(VideoMetadataSchema) }
+// ClaudeMetadataGenerator (opcional, METADATA_PROVIDER=claude):
+// client.messages.parse({ model: "claude-opus-4-8", output_config: { format: zodOutputFormat(...) } })
 ```
 
-- Búsqueda semántica: la query del usuario se embebe con Voyage (`input_type: "query"`) y se compara por coseno; umbral de similitud para no devolver ruido.
+- Búsqueda semántica: la query del usuario se embebe con el mismo `bge-m3` y se compara por coseno; umbral de similitud para no devolver ruido.
 
 ## 6. Docker (dev)
 
@@ -147,17 +149,27 @@ const response = await client.messages.parse({
 | `redis` | `redis:7-alpine` | 6379 |
 | `minio` | `minio/minio` (sustituto local de R2) | 9000/9001 |
 | `whisper` | build propio (`faster-whisper` + API HTTP mínima) | 8081 |
+| `ollama` | `ollama/ollama` (modelos `qwen2.5:3b-instruct` + `bge-m3`, pull en init) | 11434 |
 | `api` | build del monorepo (target `api`), hot-reload con volumen | 3000 |
 | `worker` | build del monorepo (target `worker`) | — |
 
-Secrets (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, claves R2) van en `.env` (gitignored, con `.env.example` versionado).
+**El stack IA no necesita ninguna API key.** Los únicos secrets son las claves R2 (solo producción; en dev MinIO usa credenciales locales) y el secreto JWT — van en `.env` (gitignored, con `.env.example` versionado).
 
-## 7. Producción (presupuesto ~0)
+## 7. Producción (costo $0 — restricción dura)
 
-- **API + Worker + Postgres + Redis:** VPS gratuito (Oracle Cloud Always Free ARM) con el mismo compose, o Fly.io (allowance gratuita). Recomendación: **VPS + compose** — demuestra Docker de punta a punta y es un solo lugar que explicar.
-- **R2:** capa gratuita (10 GB + egress gratis) cubre los ~10 videos demo.
-- **Frontend:** Cloudflare Pages (gratis).
-- **Whisper en prod:** el contenedor corre en el mismo VPS (modelo `small`, CPU); si no alcanza la RAM, fallback a Groq API.
+**Regla del proyecto: ninguna pieza puede generar factura.** Nada de APIs de pago ni "gratis con tarjeta que luego cobra". Presupuesto total: $0.
+
+| Pieza | Servicio | Costo |
+|---|---|---|
+| API + Worker + Postgres + Redis + Whisper + Ollama | **Oracle Cloud Always Free** (VM ARM, hasta 4 OCPU / 24 GB RAM) con el mismo compose | $0 permanente |
+| Almacenamiento de video | **Cloudflare R2** capa gratuita: 10 GB + egress ilimitado gratis (10 videos × ≤500 MB ≈ 5 GB, entra) | $0 |
+| Frontend | **Cloudflare Pages** → `libreplay.pages.dev` | $0 |
+| Dominio API | **Sin dominio comprado**: subdominio gratis (DuckDNS) apuntando al VPS, HTTPS con Caddy (Let's Encrypt) | $0 |
+| IA (transcripción, metadata, embeddings) | Whisper + Ollama en el propio VPS — sin API keys ni cuotas | $0 |
+| CI + repo + releases | GitHub Free | $0 |
+
+- Los 24 GB de RAM del Always Free ARM aguantan Postgres + Redis + whisper `small` + `qwen2.5:3b` + `bge-m3` con margen.
+- Plan B si Oracle no da disponibilidad de la VM: dividir el compose entre dos hosts gratuitos (p. ej. Fly.io allowance) manteniendo la regla $0.
 
 ## 8. Seguridad
 
@@ -192,6 +204,7 @@ Flujo por release: cerrar la fase → actualizar `CHANGELOG.md` → `git tag -a 
 
 | Riesgo | Mitigación |
 |---|---|
-| Whisper lento en CPU del VPS | Modelo `small`, audio a 16 kHz mono con ffmpeg; criterio §6.2 (5 min de video < 5 min) se valida en F4 — si no llega, Groq API |
-| Costo Claude se sale de presupuesto | 1 llamada por video, transcripción truncada a ~30 k caracteres; opción `claude-haiku-4-5` documentada |
+| Whisper lento en CPU del VPS | Modelo `small`, audio a 16 kHz mono con ffmpeg; criterio §6.2 (5 min de video < 5 min) se valida en F4 — si no llega, Groq API (capa gratuita, sigue siendo $0) |
+| LLM de 3B genera metadata pobre (sinopsis genéricas, categorías erradas) | Salida forzada por schema + categorías como enum cerrado; prompt con few-shot; el uploader siempre revisa antes de publicar (HU-04). Escalar a `qwen2.5:7b` si la RAM lo permite; el puerto `MetadataGenerator` deja enchufar Claude sin tocar el pipeline |
 | pgvector sin resultados relevantes | Embeber sinopsis+transcript (no solo título); umbral de similitud calibrado con los videos demo |
+| Oracle recicla la VM Always Free por inactividad | Uptime monitor gratuito (UptimeRobot) + backups de BD a R2; el compose reconstruye todo en minutos |

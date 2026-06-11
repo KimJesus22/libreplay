@@ -11,3 +11,7 @@ El mapa de versiones por fase vive en `specs/plan.md` §9.
 ### Added
 - Documentos de spec-driven development: `specs/spec.md`, `specs/plan.md`, `specs/tasks.md`
 - Guía para agentes (`AGENTS.md`) y esquema de releases
+
+### Changed
+- Restricción dura de costo $0: IA 100% local (Ollama + faster-whisper) en lugar
+  de APIs de pago; hosting solo en capas gratuitas permanentes

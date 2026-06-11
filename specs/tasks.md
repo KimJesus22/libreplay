@@ -7,7 +7,7 @@
 ## Fase 0 — Fundaciones (entorno reproducible)
 
 - [ ] Monorepo NestJS (`apps/api`, `apps/worker`, `libs/`), TypeScript estricto, ESLint + Prettier
-- [ ] `docker-compose.yml`: db (pgvector), redis, minio, api, worker — `docker compose up` levanta todo (§6.5)
+- [ ] `docker-compose.yml`: db (pgvector), redis, minio, ollama, api, worker — `docker compose up` levanta todo (§6.5)
 - [ ] Prisma conectado, migración inicial vacía + extensión `vector` habilitada
 - [ ] `.env.example`, README esqueleto, Swagger en `/docs`
 - [ ] CI mínima (GitHub Actions: lint + build)
@@ -57,8 +57,9 @@
 
 ## Fase 5 — Metadata IA y búsqueda (HU-04, HU-07)
 
-- [ ] Job `metadata`: Claude (`claude-opus-4-8`, structured outputs) → sinopsis, categorías, tags sugeridos
-- [ ] Job `embed`: Voyage → `embedding` en pgvector + índice HNSW
+- [ ] Puerto `MetadataGenerator` + adaptador Ollama (`qwen2.5:3b-instruct`, JSON forzado por schema + Zod)
+- [ ] Job `metadata`: sinopsis, categorías (enum cerrado), tags sugeridos
+- [ ] Job `embed`: Ollama `bge-m3` → `embedding` en pgvector + índice HNSW
 - [ ] Flujo de revisión del uploader: editar sugerencias antes de publicar (HU-04)
 - [ ] `GET /search`: modo texto (tsvector) y modo semántico (coseno + umbral) (§6.3)
 
