@@ -35,6 +35,10 @@ Load-bearing decisions:
 - **Local dev uses MinIO as the R2 stand-in** (same S3 SDK); production uses real Cloudflare R2. `docker compose up` must bring up the entire dev environment (db, redis, minio, whisper, api, worker) — acceptance criterion §6.5.
 - Secrets (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, R2 keys) live in `.env` (gitignored); keep `.env.example` current when adding variables.
 
+## Releases
+
+SemVer with annotated tags + GitHub Releases; version-per-phase map lives in `specs/plan.md` §9 (`v0.1.0` at F0 … `v1.0.0` when F8 closes). Closing a phase means: demo verified → update `CHANGELOG.md` (Keep a Changelog format) → `git tag -a vX.Y.Z` → push tag → GitHub Release. Commits follow Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`…). Pre-1.0, breaking API changes are allowed without a major bump.
+
 ## Commands
 
 No build/test tooling exists yet. Once F0 lands, the entry point is `docker compose up` (full dev environment) — keep this file updated with real lint/test/run commands as they are introduced.

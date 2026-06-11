@@ -166,7 +166,29 @@ Secrets (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, claves R2) van en `.env` (gitign
 - Validación de subida: MIME + extensión MP4, límite 500 MB (configurable por env), presigned PUT con `content-length-range`.
 - Rate limiting (`@nestjs/throttler`) en auth y búsqueda.
 
-## 9. Riesgos
+## 9. Releases y versionado
+
+- **SemVer** con tags anotados (`vX.Y.Z`) + **GitHub Releases** con notas por versión.
+- **Conventional Commits** (`feat:`, `fix:`, `docs:`, `chore:`…) — ya en uso; permiten generar el changelog a partir del historial.
+- **`CHANGELOG.md`** en formato [Keep a Changelog](https://keepachangelog.com/es-ES/), actualizado en cada release.
+- Antes de 1.0 la API puede romper sin aviso (regla SemVer 0.x). Cada fase cerrada = un minor:
+
+| Versión | Hito (fase de tasks.md) |
+|---|---|
+| `v0.1.0` | F0 — entorno reproducible (`docker compose up` + health + Swagger) |
+| `v0.2.0` | F1 — auth y roles |
+| `v0.3.0` | F2 — subida a R2/MinIO |
+| `v0.4.0` | F3 — catálogo y streaming con seek (206) |
+| `v0.5.0` | F4 — transcripción automática |
+| `v0.6.0` | F5 — metadata IA + búsqueda semántica |
+| `v0.7.0` | F6 — favoritos, historial, admin |
+| `v0.8.0` | F7 — frontend Astro completo |
+| `v1.0.0-rc.1` | F8 parcial — desplegado en URL pública, en validación |
+| **`v1.0.0`** | F8 cerrada — métricas de éxito del spec §8 cumplidas (URL pública + 10 videos + docs + README con demo) |
+
+Flujo por release: cerrar la fase → actualizar `CHANGELOG.md` → `git tag -a vX.Y.Z` → push del tag → GitHub Release con las notas (qué se puede demostrar en esa versión). Parches sobre una versión publicada → `vX.Y.Z+1` con `fix:`.
+
+## 10. Riesgos
 
 | Riesgo | Mitigación |
 |---|---|
