@@ -1,0 +1,21 @@
+// Schema Prisma — fuente de verdad del modelo de datos (plan.md §4).
+//
+// En F0 no hay modelos todavía: solo se deja conectada la BD y habilitada la
+// extensión pgvector. Los modelos llegan con su fase: User (F1), Video (F2),
+// Transcript (F4), embedding vector(1024) (F5)...
+
+generator client {
+  provider = "prisma-client-js"
+  // postgresqlExtensions permite declarar extensiones aquí en vez de solo en
+  // SQL crudo: prisma migrate las incluye en el diff y quedan versionadas.
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  // pgvector: una sola BD para datos relacionales Y vectores de búsqueda
+  // semántica — decisión load-bearing de plan.md §2 (evita un segundo motor
+  // tipo Pinecone/Qdrant que habría que operar y pagar).
+  extensions = [vector]
+}

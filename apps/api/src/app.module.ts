@@ -1,0 +1,18 @@
+import { Module } from '@nestjs/common';
+import { TerminusModule } from '@nestjs/terminus';
+import { PrismaModule } from '@app/prisma';
+import { HealthController } from './health/health.controller';
+
+/**
+ * Módulo raíz: el "índice" de la aplicación.
+ *
+ * En NestJS todo vive dentro de módulos. Cada feature del plan (auth, videos,
+ * catalog...) será su propio módulo importado aquí. Por ahora:
+ * - PrismaModule (global): acceso a Postgres para toda la app.
+ * - TerminusModule: infraestructura de health checks para /health.
+ */
+@Module({
+  imports: [PrismaModule, TerminusModule],
+  controllers: [HealthController],
+})
+export class AppModule {}

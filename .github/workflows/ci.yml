@@ -1,0 +1,35 @@
+# CI mínima de F0: lint + build (tasks.md). Sin tests todavía — llegan en F1
+# (e2e de auth); cuando existan, se agrega el paso aquí.
+#
+# Costo $0: GitHub Actions es gratis para repos públicos (plan.md §7).
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm/action-setup lee la versión exacta del campo "packageManager"
+      # del package.json — la misma que usan Docker (corepack) y tu máquina.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # El cliente Prisma es código generado: sin este paso, cualquier import
+      # de @prisma/client rompería la compilación.
+      - run: pnpm prisma:generate
+
+      - run: pnpm lint
+
+      - run: pnpm build

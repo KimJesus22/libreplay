@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    // A qué JavaScript se compila. Node 22 entiende ES2023 sin problema.
+    "target": "ES2023",
+    "module": "commonjs",
+    "moduleResolution": "node",
+
+    // Los decoradores (@Controller, @Get...) son la base de NestJS:
+    // sin estas dos líneas, Nest no puede "leer" las anotaciones.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    // Modo estricto: TypeScript nos avisa de errores antes de ejecutar.
+    // Cuesta un poco más escribir, pero atrapa bugs gratis.
+    "strict": true,
+
+    "declaration": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    // Alias de imports para las libs compartidas (plan.md §3): los módulos
+    // escriben `import { PrismaService } from '@app/prisma'` en vez de
+    // rutas relativas frágiles tipo '../../../libs/prisma/src'.
+    "paths": {
+      "@app/prisma": ["libs/prisma/src"],
+      "@app/prisma/*": ["libs/prisma/src/*"]
+    },
+    "incremental": true,
+    "skipLibCheck": true
+  }
+}

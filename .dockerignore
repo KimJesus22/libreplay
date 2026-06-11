@@ -1,0 +1,16 @@
+# Qué NO entra en el contexto de build de Docker.
+#
+# Crítico: node_modules del host trae binarios de Windows; si el COPY . .
+# del Dockerfile los copiara, pisarían los de Linux instalados en la imagen
+# y nada arrancaría. (Es el mismo problema que el volumen anónimo
+# /app/node_modules resuelve en runtime — esto lo resuelve en build.)
+node_modules
+dist
+
+# Secretos: jamás dentro de una imagen.
+.env
+.env.*
+!.env.example
+
+.git
+*.log

@@ -1,0 +1,80 @@
+# Entorno de desarrollo completo (criterio §6.5: "docker compose up" levanta todo).
+# Cada servicio mapea 1:1 con la tabla de plan.md §6.
+
+services:
+  # PostgreSQL con la extensión pgvector ya compilada — una sola BD para
+  # datos relacionales Y vectores de búsqueda semántica (decisión plan.md §2).
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: libreplay
+      POSTGRES_PASSWORD: libreplay # solo dev; en prod va en .env del VPS
+      POSTGRES_DB: libreplay
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U libreplay']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis cumple doble función: backend de colas BullMQ (pipeline IA) y caché.
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+
+  # MinIO = sustituto local de Cloudflare R2. Habla el mismo protocolo S3,
+  # así que el código de la API no distingue entre dev y prod: solo cambia
+  # la URL y las credenciales por variables de entorno.
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: libreplay
+      MINIO_ROOT_PASSWORD: libreplay123 # solo dev
+    ports:
+      - '9000:9000' # API S3
+      - '9001:9001' # consola web (http://localhost:9001)
+    volumes:
+      - minio-data:/data
+
+  # La API corre dentro de Docker con el código montado como volumen:
+  # editas un .ts en tu editor y nest --watch recompila dentro del contenedor.
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    # Antes de arrancar, aplica las migraciones pendientes (migrate deploy es
+    # la variante no-interactiva, segura para arranques automáticos). Así
+    # "docker compose up" deja la BD lista sin pasos manuales (criterio §6.5).
+    command: sh -c "pnpm prisma migrate deploy && pnpm run start:api"
+    ports:
+      - '3000:3000'
+    environment:
+      PORT: 3000
+      # Dentro de la red de compose los hosts son los nombres de servicio
+      # (db, redis), no localhost — localhost solo aplica desde tu máquina.
+      DATABASE_URL: postgresql://libreplay:libreplay@db:5432/libreplay
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - .:/app
+      # Truco importante: este volumen anónimo "tapa" node_modules del host.
+      # Sin él, los binarios npm de Windows pisarían a los de Linux del
+      # contenedor y nada arrancaría.
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # DEUDA (planificada): faltan los servicios `whisper` (F4), `ollama` (F5)
+  # y `worker` (F4). Se agregan cuando su fase los necesite — no antes,
+  # para no pagar arranques lentos de compose mientras no se usan.
+
+volumes:
+  postgres-data:
+  minio-data:

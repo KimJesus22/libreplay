@@ -6,7 +6,7 @@ Guidance for AI coding agents working in this repository.
 
 LibrePlay — a free video streaming platform (portfolio project). Backend-first rebuild of a React + Supabase app, now with its own NestJS backend, an AI pipeline that auto-catalogs uploaded videos, and an Astro frontend. UI language and all spec documents are Spanish.
 
-**There is no application code yet.** The repo follows spec-driven development; implementation has not started.
+The repo follows spec-driven development. Implementation is in **phase F0** (foundations): the NestJS monorepo scaffold exists (`apps/api` with `/health` + Swagger, `apps/worker` placeholder, `libs/prisma`), with Prisma + pgvector wired and CI in place.
 
 ## Spec-driven workflow
 
@@ -42,4 +42,15 @@ SemVer with annotated tags + GitHub Releases; version-per-phase map lives in `sp
 
 ## Commands
 
-No build/test tooling exists yet. Once F0 lands, the entry point is `docker compose up` (full dev environment) — keep this file updated with real lint/test/run commands as they are introduced.
+- `docker compose up` — full dev environment (db + redis + minio + api with hot reload; applies Prisma migrations on boot). API: `http://localhost:3000/health`, Swagger: `/docs`.
+- `pnpm install` then `pnpm prisma:generate` — first-time setup outside Docker (Node ≥ 22).
+- `pnpm lint` / `pnpm format` — ESLint (type-checked) / Prettier.
+- `pnpm build` — compiles `api` and `worker` to `dist/`.
+- `pnpm start:api` / `pnpm start:worker` — watch mode outside Docker (need Postgres/Redis running).
+- `pnpm prisma:migrate` — create/apply a migration in dev (`prisma migrate dev`).
+
+No tests yet — e2e tests arrive in F1; add the command here when they do.
+
+## Code style
+
+Comments are educational and in Spanish: they explain the *why* of each decision (often citing `plan.md`/`spec.md` sections) as if defending it in a job interview. Known shortcuts are marked `DEUDA:` with the phase where they'll be paid. Match this style when adding code.

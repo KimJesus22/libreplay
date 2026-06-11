@@ -6,11 +6,11 @@
 
 ## Fase 0 — Fundaciones (entorno reproducible)
 
-- [ ] Monorepo NestJS (`apps/api`, `apps/worker`, `libs/`), TypeScript estricto, ESLint + Prettier
-- [ ] `docker-compose.yml`: db (pgvector), redis, minio, ollama, api, worker — `docker compose up` levanta todo (§6.5)
-- [ ] Prisma conectado, migración inicial vacía + extensión `vector` habilitada
-- [ ] `.env.example`, README esqueleto, Swagger en `/docs`
-- [ ] CI mínima (GitHub Actions: lint + build)
+- [x] Monorepo NestJS (`apps/api`, `apps/worker`, `libs/`), TypeScript estricto, ESLint + Prettier
+- [x] `docker-compose.yml`: db (pgvector), redis, minio, api — `docker compose up` levanta todo (§6.5). _Ajuste documentado en el compose: `ollama`, `whisper` y `worker` se agregan cuando su fase los use (F4/F5) para no pagar arranques lentos antes de tiempo._
+- [x] Prisma conectado, migración inicial vacía + extensión `vector` habilitada
+- [x] `.env.example`, README esqueleto, Swagger en `/docs`
+- [x] CI mínima (GitHub Actions: lint + build)
 
 **Demo:** `docker compose up` → API responde `GET /health`, Swagger visible.
 **Release:** `v0.1.0`
