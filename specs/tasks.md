@@ -68,8 +68,9 @@
 
 ## Fase 7 — Frontend
 
-- [ ] SPA React + Vite + Tailwind (es-ES, estructura i18n-ready §7)
+- [ ] Sitio Astro + TypeScript + Tailwind CSS (es-ES, estructura i18n-ready §7)
 - [ ] Páginas: home/catálogo, detalle+player, búsqueda, login/registro, perfil, subida (uploader), panel admin
+- [ ] Islas interactivas (player, búsqueda, formulario de subida con progreso); el resto, HTML estático/SSR
 - [ ] Player `<video>` con reanudación de progreso
 
 **Demo:** flujo completo visitante → registro → reproducir → favorito.

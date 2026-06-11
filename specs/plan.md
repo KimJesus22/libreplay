@@ -7,7 +7,7 @@
 
 ```
                 ┌──────────────┐
-                │   Frontend    │  React + Vite (SPA en español)
+                │   Frontend    │  Astro + TypeScript + Tailwind (es)
                 └──────┬───────┘
                        │ HTTPS / JSON
                 ┌──────▼───────┐         ┌─────────────────┐
@@ -44,7 +44,7 @@ Dos procesos Node a partir del mismo monorepo NestJS:
 | Transcripción | **faster-whisper** (contenedor propio, modelo `small`) | Claude no transcribe audio. Whisper local = costo cero y sin límites de cuota; corre en el compose. Alternativa si el host es muy limitado: API de Groq (Whisper, capa gratuita). |
 | Metadata IA | **Claude API** — `claude-opus-4-8`, SDK oficial `@anthropic-ai/sdk` | A partir de la transcripción genera sinopsis, categorías y etiquetas con **structured outputs** (`output_config.format` + schema Zod): JSON válido garantizado, sin parseo frágil. Son pocas llamadas (1 por video subido), costo marginal. Si el presupuesto aprieta, bajar a `claude-haiku-4-5` es un cambio de una línea — decisión del autor. |
 | Embeddings | **Voyage AI** (`voyage-3.5-lite`, multilingüe, capa gratuita) | Anthropic no ofrece endpoint de embeddings; Voyage es su proveedor recomendado. Multilingüe → funciona con contenido en español. Vector de la sinopsis+transcripción → pgvector. |
-| Frontend | **React 18 + Vite + Tailwind** | Continuidad con el proyecto anterior (React); Vite por velocidad. Reproductor: `<video>` nativo (MP4/H.264 no necesita hls.js — fuera de scope la transcodificación). |
+| Frontend | **Astro + TypeScript + Tailwind CSS** | El sitio es mayormente contenido (catálogo, detalle): la arquitectura de islas de Astro envía ~0 JS por defecto y solo hidrata lo interactivo (player, búsqueda, formularios) — mejor rendimiento que una SPA y un argumento técnico distinto al típico portafolio React. Islas en TS vanilla/componentes Astro, sin framework extra. Reproductor: `<video>` nativo (MP4/H.264 no necesita hls.js — fuera de scope la transcodificación). |
 | Docs API | **Swagger** vía `@nestjs/swagger` | Métrica de éxito §8.3, servido en `/docs`. |
 
 ## 3. Módulos NestJS
@@ -53,6 +53,7 @@ Dos procesos Node a partir del mismo monorepo NestJS:
 apps/
   api/        → AppModule: Auth, Users, Videos, Catalog, Search, Favorites, History, Admin
   worker/     → WorkerModule: TranscriptionProcessor, MetadataProcessor, EmbeddingProcessor
+  web/        → Astro + TS + Tailwind (consume la API REST; islas para player/búsqueda/subida)
 libs/
   prisma/     → PrismaService compartido
   storage/    → S3Client (R2/MinIO), firma de URLs
