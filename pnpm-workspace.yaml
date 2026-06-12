@@ -9,9 +9,13 @@ packages:
 # - prisma/@prisma/*: su postinstall descarga los query engines nativos y
 #   genera el cliente tipado. Sin esto, @prisma/client lanza "did you run
 #   prisma generate?" en runtime → true.
-# (Cuando llegue argon2 [F1], también necesita compilar → true.)
+# - argon2 (F1): compila el binding nativo en postinstall → true.
+# - unrs-resolver (dep transitiva de eslint-import): binario nativo opcional;
+#   funciona con su fallback WASM sin compilar → false.
 allowBuilds:
   '@nestjs/core': false
   prisma: true
   '@prisma/client': true
   '@prisma/engines': true
+  argon2: true
+  unrs-resolver: false

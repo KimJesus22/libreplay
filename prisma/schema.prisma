@@ -1,8 +1,8 @@
 // Schema Prisma — fuente de verdad del modelo de datos (plan.md §4).
 //
-// En F0 no hay modelos todavía: solo se deja conectada la BD y habilitada la
-// extensión pgvector. Los modelos llegan con su fase: User (F1), Video (F2),
-// Transcript (F4), embedding vector(1024) (F5)...
+// Cada modelo llega con su fase: User (F1), Video (F2), Transcript (F4),
+// embedding vector(1024) (F5)... F0 solo dejó la BD conectada y la extensión
+// pgvector habilitada.
 
 generator client {
   provider = "prisma-client-js"
@@ -18,4 +18,30 @@ datasource db {
   // semántica — decisión load-bearing de plan.md §2 (evita un segundo motor
   // tipo Pinecone/Qdrant que habría que operar y pagar).
   extensions = [vector]
+}
+
+// ---------------------------------------------------------------------------
+// F1 — Auth y usuarios (plan.md §4, HU-01/HU-02)
+// ---------------------------------------------------------------------------
+
+enum Role {
+  VIEWER
+  UPLOADER
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  // Hash argon2id del password — NUNCA el password en claro (plan.md §8).
+  password  String
+  role      Role     @default(VIEWER)
+  // Hash del refresh token vigente. Guardar el hash (no el token) hace que
+  // un dump de la BD no sirva para fabricar sesiones; sobreescribirlo en
+  // cada /auth/refresh implementa la rotación: el token anterior deja de
+  // validar. Una sola sesión activa por usuario — suficiente para F1; si en
+  // el futuro hace falta multi-dispositivo, esto se extrae a su propia tabla.
+  refreshTokenHash String?
+  createdAt DateTime @default(now())
+  // Relaciones favorites/history llegan en F6 con sus modelos.
 }

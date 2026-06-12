@@ -6,6 +6,7 @@ import {
   PrismaHealthIndicator,
 } from '@nestjs/terminus';
 import { PrismaService } from '@app/prisma';
+import { Public } from '../auth/decorators/public.decorator';
 
 /**
  * GET /health — cumple dos funciones:
@@ -20,6 +21,8 @@ import { PrismaService } from '@app/prisma';
  * sería mentira — el health check debe probar dependencias, no existencia.
  */
 @ApiTags('health')
+// Público: el monitor de uptime y el healthcheck de Docker no tienen JWT.
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(

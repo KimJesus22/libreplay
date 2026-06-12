@@ -17,10 +17,10 @@
 
 ## Fase 1 — Auth y usuarios (HU-01, HU-02)
 
-- [ ] Modelos `User` + roles, hash argon2
-- [ ] `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh` (refresh rotativo, cookie httpOnly)
-- [ ] `JwtAuthGuard` + `RolesGuard`; semilla de usuario admin
-- [ ] Tests e2e: sin token → `401`; viewer en endpoint de uploader → `403` (§6.4)
+- [x] Modelos `User` + roles, hash argon2
+- [x] `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh` (refresh rotativo, cookie httpOnly)
+- [x] `JwtAuthGuard` + `RolesGuard`; semilla de usuario admin
+- [x] Tests e2e: sin token → `401`; viewer en endpoint de uploader → `403` (§6.4) _(el 403 se prueba contra un controller de prueba del e2e; cuando F2 cree `POST /videos`, el test apunta ahí)_
 
 **Demo:** registro + login desde Swagger, sesión persiste tras refresh.
 **Release:** `v0.2.0`

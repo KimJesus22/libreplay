@@ -1,6 +1,12 @@
+// Carga .env ANTES de cualquier otro import (los imports se ejecutan en
+// orden): en dev `nest start` no lee .env solo; en Docker/prod las variables
+// ya vienen del entorno y dotenv no pisa nada.
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
+import { validateEnv } from './config/env';
 
 /**
  * Punto de entrada de la API.
@@ -10,7 +16,12 @@ import { AppModule } from './app.module';
  * ruta HTTP por cada decorador @Get/@Post que encuentra en ellos.
  */
 async function bootstrap() {
+  // Si falta una variable, morir AQUÍ con la lista de errores — no a mitad
+  // de un request (deuda de F0, pagada).
+  const env = validateEnv();
+
   const app = await NestFactory.create(AppModule);
+  configureApp(app);
 
   // Swagger genera la documentación interactiva (criterio §8.3 del spec)
   // leyendo los mismos decoradores de los controladores. Cero esfuerzo extra:
@@ -18,16 +29,15 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('LibrePlay API')
     .setDescription('Streaming de video con catalogación por IA')
-    .setVersion('0.1.0')
+    .setVersion('0.2.0')
+    // Habilita el botón "Authorize" para probar endpoints protegidos
+    // pegando el accessToken que devuelve /auth/login.
+    .addBearerAuth()
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
 
-  // DEUDA: el puerto viene de process.env sin validar. Cuando haya más
-  // variables (DB, Redis, S3...) hay que validarlas al arrancar con un schema
-  // (p. ej. zod) para que la app falle ruidosamente si falta una, en vez de
-  // explotar a mitad de un request. Pagar en F1.
-  await app.listen(Number(process.env.PORT ?? 3000), '0.0.0.0');
-  console.log(`API escuchando en http://localhost:${process.env.PORT ?? 3000}`);
+  await app.listen(env.PORT, '0.0.0.0');
+  console.log(`API escuchando en http://localhost:${env.PORT}`);
 }
 
 void bootstrap();
