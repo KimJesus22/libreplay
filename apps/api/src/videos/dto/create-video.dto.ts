@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Category } from '@prisma/client';
 import {
+  ArrayUnique,
+  IsArray,
+  IsEnum,
   IsInt,
   IsOptional,
   IsPositive,
@@ -54,4 +58,18 @@ export class UpdateVideoDto {
   @IsString()
   @MaxLength(5000)
   description?: string;
+
+  // Categorías del enum cerrado (F3). El uploader las ajusta a mano hasta que
+  // el pipeline (F5) las sugiera. `@IsEnum` cada elemento → un valor fuera de
+  // la lista da 400, nunca llega a la BD.
+  @ApiPropertyOptional({
+    enum: Category,
+    isArray: true,
+    example: [Category.CINE, Category.DOCUMENTAL],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(Category, { each: true })
+  categories?: Category[];
 }

@@ -1,0 +1,7 @@
+-- CreateEnum
+CREATE TYPE "Category" AS ENUM ('ANIMACION', 'CINE', 'DOCUMENTAL', 'EDUCACION', 'ENTRETENIMIENTO', 'GAMING', 'MUSICA', 'NOTICIAS', 'DEPORTES', 'TECNOLOGIA', 'OTRO');
+
+-- AlterTable
+ALTER TABLE "Video" ADD COLUMN     "categories" "Category"[] DEFAULT ARRAY[]::"Category"[],
+ADD COLUMN     "publishedAt" TIMESTAMP(3),
+ADD COLUMN     "views" INTEGER NOT NULL DEFAULT 0;

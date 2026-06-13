@@ -8,6 +8,31 @@ El mapa de versiones por fase vive en `specs/plan.md` §9.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-13
+
+### Added
+- Catálogo público (F3, HU-05): `GET /videos` sin autenticación (módulo
+  `catalog`) — solo videos `PUBLISHED`, con filtro por categoría, orden por
+  novedades (`recent`) o popularidad (`popular`) y paginación obligatoria
+- `GET /videos/:id`: detalle público de un video publicado (`404` si no existe
+  o no está publicado); la proyección pública nunca expone `storageKey`
+- Streaming (F3, HU-06, criterio §6.1): `GET /videos/:id/stream` (módulo
+  `stream`, requiere sesión) devuelve una URL prefirmada GET con TTL de 2 h; el
+  navegador hace `Range: bytes=...` directo contra el storage → `206 Partial
+  Content`, los bytes nunca pasan por la API
+- `POST /videos/:id/publish`: pasa un video de `READY` a `PUBLISHED` y sella
+  `publishedAt` (no-`READY` → `409`)
+- Contador de vistas (`Video.views`): se incrementa al pedir la URL de stream
+  (una reproducción ≈ una vista); ordena el catálogo "popular"
+- Categorías como enum cerrado `Category` (migración
+  `20260613135433_add_catalog_streaming`), editables por el uploader vía
+  `PATCH /videos/:id` — la IA las sugerirá en F5
+- `StorageService.presignedGetUrl()` para firmar URLs de lectura
+- Tests e2e de catálogo y streaming (`catalog.e2e-spec.ts`): publicación,
+  filtros, y `Range` → `206` con fetch real contra MinIO (28 e2e en total)
+- El script `scripts/upload-demo.mjs` ahora cubre el flujo completo F2+F3:
+  subir → publicar → URL de stream → `Range` → `206`
+
 ## [0.3.0] - 2026-06-13
 
 ### Added

@@ -124,6 +124,26 @@ export class VideosService {
     return this.prisma.video.update({ where: { id }, data: dto });
   }
 
+  /**
+   * Publica un video (HU-06): pasa de READY a PUBLISHED y sella `publishedAt`.
+   * Solo desde READY — publicar algo aún UPLOADING (sin bytes confirmados) o ya
+   * PUBLISHED no tiene sentido y devuelve 409. El flujo de revisión del
+   * uploader (editar la metadata IA antes de publicar) llega en F5; aquí la
+   * publicación ya es un paso explícito y reversible solo por un admin (F6).
+   */
+  async publish(id: string, userId: string): Promise<Video> {
+    const video = await this.getOwned(id, userId);
+    if (video.status !== VideoStatus.READY) {
+      throw new ConflictException(
+        'Solo se puede publicar un video en estado READY',
+      );
+    }
+    return this.prisma.video.update({
+      where: { id },
+      data: { status: VideoStatus.PUBLISHED, publishedAt: new Date() },
+    });
+  }
+
   /** Borra objeto + registro. Solo el dueño (HU-03); admin llega en F6. */
   async remove(id: string, userId: string): Promise<void> {
     const video = await this.getOwned(id, userId);

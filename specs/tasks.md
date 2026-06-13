@@ -38,12 +38,13 @@
 
 ## Fase 3 — Catálogo y streaming (HU-05, HU-06)
 
-- [ ] `GET /videos` público con filtro por categoría y orden recientes/populares
-- [ ] `GET /videos/:id/stream` → URL prefirmada; verificación de `206 Partial Content` con header `Range` (§6.1)
-- [ ] `POST /videos/:id/publish` y contador de vistas
-- [ ] Test e2e: petición con `Range` recibe `206`
+- [x] `GET /videos` público (módulo `catalog`) con filtro por categoría y orden recientes/populares, paginado; `GET /videos/:id` detalle público (404 si no publicado)
+- [x] `GET /videos/:id/stream` (módulo `stream`) → URL prefirmada GET; verificación de `206 Partial Content` con header `Range` (§6.1) en e2e con fetch real contra MinIO
+- [x] `POST /videos/:id/publish` (READY → PUBLISHED, `publishedAt`) y contador de vistas (incrementado al pedir el stream)
+- [x] Test e2e: petición con `Range` recibe `206` _(28 e2e verdes en total)_
+- [x] Categorías como enum cerrado `Category`; editables por el uploader vía `PATCH` (la IA las sugiere en F5)
 
-**Demo:** reproducir y hacer seek en un video desde el navegador.
+**Demo:** reproducir y hacer seek en un video desde el navegador. _(verificada vía `scripts/upload-demo.mjs`: subir → publicar → stream URL → `Range` → `206`; el `<video>` del navegador llega en F7)_
 **Release:** `v0.4.0`
 
 ## Fase 4 — Pipeline de transcripción

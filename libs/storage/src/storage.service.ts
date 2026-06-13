@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   CreateBucketCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -104,6 +105,25 @@ export class StorageService implements OnModuleInit {
         // streaming en F3. Forzándolo a firmarse, un PUT con otro tipo → 403.
         signableHeaders: new Set(['content-type']),
       },
+    );
+  }
+
+  /**
+   * URL prefirmada de LECTURA (GET) para el reproductor (F3, criterio §6.1).
+   * El `<video>` la usa como `src` y emite `Range: bytes=...` directo contra
+   * el storage → `206 Partial Content` sin que los bytes pasen por la API.
+   * Range NO va en la firma: S3 permite el header sin firmarlo, que es justo
+   * lo que necesita el navegador para hacer seek sobre una URL ya emitida.
+   *
+   * TTL largo (2 h, plan.md §3): debe cubrir la reproducción completa más el
+   * seek; si expira a mitad, el `<video>` cortaría. Se firma por reproducción,
+   * no se cachea — una URL filtrada caduca sola.
+   */
+  presignedGetUrl(key: string, expiresInS = 7200): Promise<string> {
+    return getSignedUrl(
+      this.signer,
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      { expiresIn: expiresInS },
     );
   }
 

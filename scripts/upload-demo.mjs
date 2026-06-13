@@ -91,3 +91,22 @@ const confirmed = await api(`/videos/${video.id}/confirm`, {
 });
 console.log(`✔ Confirmado — estado: ${confirmed.status}`);
 console.log(`  Verifícalo en MinIO: http://localhost:9001 → bucket "videos" → ${video.storageKey}`);
+
+// 5. Publicar (F3): READY → PUBLISHED. A partir de aquí sale en el catálogo
+// público (GET /videos) y es reproducible.
+const published = await api(`/videos/${video.id}/publish`, {
+  method: 'POST',
+  headers: auth,
+});
+console.log(`✔ Publicado — estado: ${published.status}`);
+
+// 6. Pedir la URL de streaming y demostrar el seek: un GET con header Range
+// contra la URL prefirmada responde 206 Partial Content (criterio §6.1). Es
+// lo que hará el <video> del navegador en F7.
+const { url } = await api(`/videos/${video.id}/stream`, { headers: auth });
+const ranged = await fetch(url, { headers: { Range: 'bytes=0-1023' } });
+console.log(
+  `✔ Streaming: GET con Range → ${ranged.status} ${ranged.statusText} ` +
+    `(content-range: ${ranged.headers.get('content-range') ?? 'n/a'})`,
+);
+console.log(`  URL de reproducción (TTL 2 h): ${url}`);

@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 import { PrismaModule } from '@app/prisma';
 import { AuthModule } from './auth/auth.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { HealthController } from './health/health.controller';
+import { StreamModule } from './stream/stream.module';
 import { VideosModule } from './videos/videos.module';
 
 /**
@@ -14,9 +16,18 @@ import { VideosModule } from './videos/videos.module';
  * - TerminusModule: infraestructura de health checks para /health.
  * - AuthModule (F1): endpoints /auth/* y los guards globales JWT + roles.
  * - VideosModule (F2): subida por presigned PUT y gestión del uploader.
+ * - CatalogModule (F3): catálogo público (listado + detalle).
+ * - StreamModule (F3): URL prefirmada de reproducción (Range → 206).
  */
 @Module({
-  imports: [PrismaModule, TerminusModule, AuthModule, VideosModule],
+  imports: [
+    PrismaModule,
+    TerminusModule,
+    AuthModule,
+    VideosModule,
+    CatalogModule,
+    StreamModule,
+  ],
   controllers: [HealthController],
 })
 export class AppModule {}

@@ -51,6 +51,25 @@ model User {
 // F2 — Subida de videos (plan.md §4, HU-03)
 // ---------------------------------------------------------------------------
 
+// Categorías como enum CERRADO (decisión plan.md §5 y §10-riesgos: el LLM las
+// elige de una lista fija en F5, no texto libre — evita "Comedia"/"comedia"/
+// "Humor" como tres categorías distintas). El uploader puede ajustarlas a mano
+// (PATCH) antes de publicar; en F5 el pipeline las sugiere solo. En español
+// porque la interfaz es español (spec §7); i18n de etiquetas, fuera de scope.
+enum Category {
+  ANIMACION
+  CINE
+  DOCUMENTAL
+  EDUCACION
+  ENTRETENIMIENTO
+  GAMING
+  MUSICA
+  NOTICIAS
+  DEPORTES
+  TECNOLOGIA
+  OTRO
+}
+
 enum VideoStatus {
   // UPLOADING no estaba en el plan original (plan.md §4): existe porque entre
   // emitir la URL prefirmada y la confirmación del cliente, el objeto puede
@@ -77,7 +96,17 @@ model Video {
   // real en storage. Int basta: el límite es 500 MB << 2^31.
   sizeBytes   Int
   status      VideoStatus @default(UPLOADING)
+  // Categorías del video (F3): array del enum cerrado, vacío hasta que el
+  // uploader o el pipeline (F5) las asignen. El catálogo filtra por `has`.
+  categories  Category[]  @default([])
+  // Contador de reproducciones (F3): lo incrementa GET /videos/:id/stream —
+  // pedir la URL de streaming ≈ iniciar una reproducción. Ordena "populares".
+  views       Int         @default(0)
+  // Momento de publicación (F3): null mientras no esté PUBLISHED. El catálogo
+  // ordena "recientes" por este campo, no por createdAt: un video subido hace
+  // semanas y publicado hoy debe salir arriba.
+  publishedAt DateTime?
   createdAt   DateTime    @default(now())
-  // Campos IA (synopsis, tags, categories, transcript, embedding, durationS)
-  // llegan con F4/F5 — cada modelo con su fase.
+  // Campos IA (synopsis, tags, transcript, embedding, durationS) llegan con
+  // F4/F5 — cada modelo con su fase.
 }

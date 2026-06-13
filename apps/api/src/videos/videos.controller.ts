@@ -50,8 +50,19 @@ export class VideosController {
     return this.videos.confirmUpload(id, req.user!.sub);
   }
 
+  @Post(':id/publish')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Publicar un video propio (READY → PUBLISHED)' })
+  @ApiResponse({ status: 409, description: 'El video no está en estado READY' })
+  publish(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.videos.publish(id, req.user!.sub);
+  }
+
   @Patch(':id')
-  @ApiOperation({ summary: 'Editar título/descripción de un video propio' })
+  @ApiOperation({ summary: 'Editar título/descripción/categorías de un video propio' })
   @ApiResponse({ status: 403, description: 'El video es de otro usuario' })
   update(
     @Req() req: AuthenticatedRequest,

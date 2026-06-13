@@ -5,7 +5,7 @@
 **Plataforma libre de streaming de video con catalogación automática por IA**
 
 [![CI](https://github.com/KimJesus22/libreplay/actions/workflows/ci.yml/badge.svg)](https://github.com/KimJesus22/libreplay/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Version](https://img.shields.io/badge/version-0.4.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue?logo=typescript&logoColor=white)
@@ -33,14 +33,14 @@ Subes un MP4 → el pipeline de IA lo cataloga solo: transcribe el audio, genera
 |---|---|:---:|
 | 🔐 **Auth JWT completa** | Registro, login, access token (15 min) + refresh rotativo (7 d) en cookie httpOnly, roles VIEWER/UPLOADER/ADMIN | ✅ |
 | 📤 **Subida presigned** | El video viaja directo a R2/MinIO por URL prefirmada — nunca pasa por la API | ✅ |
-| 🎥 **Streaming con seek** | `Range: bytes=...` → `206 Partial Content` directo desde R2; seek < 2 s | 🔜 |
+| 🎥 **Streaming con seek** | `Range: bytes=...` → `206 Partial Content` directo desde R2; seek < 2 s | ✅ |
 | 🤖 **Pipeline IA automático** | Transcripción (faster-whisper) → metadata (Ollama LLM) → embeddings (bge-m3) | 🔜 |
 | 🔍 **Búsqueda semántica** | pgvector + cosine similarity: encuentra videos por significado, no solo por título | 🔜 |
 | ⭐ **Favoritos + historial** | Marca favoritos y retoma donde lo dejaste | 🔜 |
 | 🛡️ **Panel admin** | Moderación: ocultar/eliminar videos | 🔜 |
 | 🌐 **Frontend Astro** | Islas interactivas: ~0 JS por defecto, solo hidrata lo necesario | 🔜 |
 
-> 🚧 **Fase actual: F2 completada (subida de videos).** El progreso detallado vive en [`specs/tasks.md`](specs/tasks.md).
+> 🚧 **Fase actual: F3 completada (catálogo y streaming).** El progreso detallado vive en [`specs/tasks.md`](specs/tasks.md).
 
 ---
 
@@ -265,6 +265,9 @@ Los tests e2e actuales cubren:
 - ✅ Guards: `401` sin token, `403` con rol insuficiente
 - ✅ Subida de videos: flujo presigned URL + confirm
 - ✅ Control de acceso por ownership
+- ✅ Catálogo público: filtro por categoría y orden
+- ✅ Publicación (READY → PUBLISHED) y contador de vistas
+- ✅ Streaming: `Range` → `206 Partial Content` (fetch real contra MinIO)
 
 ---
 
@@ -277,7 +280,7 @@ Los tests e2e actuales cubren:
 | **F0** | Entorno reproducible: `docker compose up` + health + Swagger | `v0.1.0` | ✅ |
 | **F1** | Auth JWT completa + roles + guards + tests e2e | `v0.2.0` | ✅ |
 | **F2** | Subida de videos a R2/MinIO con URLs prefirmadas | `v0.3.0` | ✅ |
-| **F3** | Catálogo público + streaming con seek (`206`) | `v0.4.0` | ⬜ |
+| **F3** | Catálogo público + streaming con seek (Range → 206) | `v0.4.0` | ✅ |
 | **F4** | Pipeline de transcripción automática (faster-whisper) | `v0.5.0` | ⬜ |
 | **F5** | Metadata IA + búsqueda semántica (pgvector) | `v0.6.0` | ⬜ |
 | **F6** | Favoritos, historial de reproducción, panel admin | `v0.7.0` | ⬜ |
