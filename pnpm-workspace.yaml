@@ -12,6 +12,8 @@ packages:
 # - argon2 (F1): compila el binding nativo en postinstall → true.
 # - unrs-resolver (dep transitiva de eslint-import): binario nativo opcional;
 #   funciona con su fallback WASM sin compilar → false.
+# - msgpackr-extract (dep transitiva de bullmq, F4): acelerador nativo opcional
+#   de la serialización msgpack; bullmq cae a JS puro sin él → false.
 allowBuilds:
   '@nestjs/core': false
   prisma: true
@@ -19,3 +21,4 @@ allowBuilds:
   '@prisma/engines': true
   argon2: true
   unrs-resolver: false
+  msgpackr-extract: false

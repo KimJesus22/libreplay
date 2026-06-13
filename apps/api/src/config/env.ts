@@ -19,6 +19,11 @@ const envSchema = z.object({
   // placeholder de .env.example en dev.
   JWT_SECRET: z.string().min(16),
 
+  // Redis para BullMQ (F4): la API es PRODUCTOR — al confirmar una subida
+  // encola el job `transcribe`. Validarla aquí da un error legible al arrancar
+  // en vez de fallar al primer /confirm en producción.
+  REDIS_URL: z.string().startsWith('redis://'),
+
   // --- Storage S3 (F2): MinIO en dev, Cloudflare R2 en prod ---
   S3_ENDPOINT: z.url(),
   // Endpoint que va DENTRO de las URLs prefirmadas. Difiere del anterior

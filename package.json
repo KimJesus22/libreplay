@@ -1,6 +1,6 @@
 {
   "name": "libreplay",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Plataforma de streaming de video con catalogación por IA — proyecto de portafolio",
   "packageManager": "pnpm@11.5.3+sha512.7ac1c919341c213a34dc0d02afb7143c5c26ac26ee8c4782deea821b8ac64d2134a081fd8941dae6e29bbb48f58dfc2b7fbceeccc07cb2f09d219d342a4969ed",
@@ -18,6 +18,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
+    "test:unit": "jest --config apps/worker/test/jest-unit.json",
     "test:e2e": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config apps/api/test/jest-e2e.json --runInBand"
   },
   "prisma": {
@@ -26,6 +27,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1066.0",
     "@aws-sdk/s3-request-presigner": "^3.1066.0",
+    "@nestjs/bullmq": "^10.2.3",
     "@nestjs/common": "^10.4.0",
     "@nestjs/core": "^10.4.0",
     "@nestjs/jwt": "^11.0.2",
@@ -34,6 +36,7 @@
     "@nestjs/terminus": "^10.2.3",
     "@prisma/client": "^6.1.0",
     "argon2": "^0.44.0",
+    "bullmq": "^5.34.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",

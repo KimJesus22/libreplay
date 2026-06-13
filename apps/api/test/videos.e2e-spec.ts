@@ -1,10 +1,11 @@
 // Tests e2e de F2 (HU-03): flujo completo de subida por presigned PUT,
 // validaciones de MP4/límite y propiedad (PATCH/DELETE solo del dueño).
 //
-// Requisitos: `docker compose up -d db minio` y `.env` con DATABASE_URL,
-// JWT_SECRET y S3_*. El PUT va contra MinIO REAL: probar la subida con el
-// storage mockeado dejaría sin cubrir justo lo crítico (firma de headers,
-// verificación del objeto en /confirm).
+// Requisitos: `docker compose up -d db minio redis` y `.env` con DATABASE_URL,
+// JWT_SECRET, REDIS_URL y S3_*. El PUT va contra MinIO REAL: probar la subida
+// con el storage mockeado dejaría sin cubrir justo lo crítico (firma de headers,
+// verificación del objeto en /confirm). Redis hace falta desde F4: /confirm
+// encola el job `transcribe` (no hay worker en el e2e; el job queda en cola).
 import 'dotenv/config';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -120,12 +121,13 @@ describe('Videos (e2e)', () => {
       const put = await putToStorage(upload);
       expect(put.status).toBe(200);
 
-      // Confirmar: la API verifica el objeto y marca READY.
+      // Confirmar: la API verifica el objeto, encola la transcripción (F4) y
+      // marca PROCESSING. El worker lo devolverá a READY al terminar.
       const confirmed = await request(http)
         .post(`/videos/${video.id}/confirm`)
         .set('Authorization', `Bearer ${uploaderToken}`)
         .expect(200);
-      expect((confirmed.body as { status: string }).status).toBe('READY');
+      expect((confirmed.body as { status: string }).status).toBe('PROCESSING');
 
       // Confirmar dos veces → 409 (ya no está UPLOADING).
       await request(http)

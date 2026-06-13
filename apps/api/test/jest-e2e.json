@@ -8,6 +8,7 @@
   },
   "moduleNameMapper": {
     "^@app/prisma$": "<rootDir>/../../../libs/prisma/src",
-    "^@app/storage$": "<rootDir>/../../../libs/storage/src"
+    "^@app/storage$": "<rootDir>/../../../libs/storage/src",
+    "^@app/queue$": "<rootDir>/../../../libs/queue/src"
   }
 }

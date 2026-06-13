@@ -1,5 +1,7 @@
-# CI mínima de F0: lint + build (tasks.md). Sin tests todavía — llegan en F1
-# (e2e de auth); cuando existan, se agrega el paso aquí.
+# CI: lint + build + tests unitarios. Los e2e (apps/api/test) necesitan db,
+# redis y minio reales — se corren a mano contra `docker compose`; meter esos
+# servicios en CI es deuda para más adelante. Los unitarios del worker (F4) no
+# dependen de nada externo, así que sí entran aquí.
 #
 # Costo $0: GitHub Actions es gratis para repos públicos (plan.md §7).
 name: CI
@@ -33,3 +35,5 @@ jobs:
       - run: pnpm lint
 
       - run: pnpm build
+
+      - run: pnpm test:unit

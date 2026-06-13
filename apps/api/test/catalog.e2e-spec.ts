@@ -2,8 +2,8 @@
 // y streaming. El criterio §6.1 se prueba de verdad: se pide la URL de stream y
 // se hace un PUT/GET REAL contra MinIO con header `Range` para verificar el 206.
 //
-// Requisitos: `docker compose up -d db minio` y `.env` con DATABASE_URL,
-// JWT_SECRET y S3_*.
+// Requisitos: `docker compose up -d db minio redis` y `.env` con DATABASE_URL,
+// JWT_SECRET, REDIS_URL y S3_* (Redis desde F4: /confirm encola transcribe).
 import 'dotenv/config';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -68,7 +68,13 @@ describe('Catálogo y streaming (e2e)', () => {
     return (res.body as { accessToken: string }).accessToken;
   }
 
-  /** Crea un video, sube los bytes a MinIO y lo confirma (queda READY). */
+  /**
+   * Crea un video, sube los bytes a MinIO, lo confirma y lo deja READY.
+   * Tras F4 /confirm encola la transcripción y deja el video en PROCESSING;
+   * aquí no hay worker (es un e2e de la API), así que forzamos READY en BD
+   * para SIMULAR que el pipeline terminó —igual que el test asigna roles a
+   * mano—. El pipeline real se prueba con el worker en `scripts/pipeline-demo.mjs`.
+   */
   async function uploadReady(title: string): Promise<string> {
     const res = await request(http)
       .post('/videos')
@@ -88,6 +94,11 @@ describe('Catálogo y streaming (e2e)', () => {
       .post(`/videos/${video.id}/confirm`)
       .set('Authorization', `Bearer ${uploaderToken}`)
       .expect(200);
+    // Simula el fin del pipeline: PROCESSING → READY (lo haría el worker).
+    await prisma.video.update({
+      where: { id: video.id },
+      data: { status: 'READY' },
+    });
     return video.id;
   }
 

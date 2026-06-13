@@ -9,6 +9,9 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import { Readable } from 'node:stream';
 
 /** Lo que /confirm necesita saber del objeto subido. */
 export interface StoredObject {
@@ -144,5 +147,23 @@ export class StorageService implements OnModuleInit {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
     );
+  }
+
+  /**
+   * Descarga un objeto a un archivo local (F4). El worker necesita los bytes
+   * EN DISCO porque ffmpeg lee de un archivo, no de un stream HTTP. Usa el
+   * cliente interno (servidor→storage), no una URL prefirmada: el worker está
+   * dentro de la red y no debe depender de la firma pública.
+   *
+   * `pipeline` propaga errores y cierra el descriptor del archivo aunque el
+   * stream falle a mitad — sin fugas de file handles en un proceso de larga vida.
+   */
+  async downloadToFile(key: string, destPath: string): Promise<void> {
+    const res = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    // En Node el Body es un Readable; el tipo del SDK es una unión amplia
+    // (Blob/ReadableStream del navegador) que aquí no aplica.
+    await pipeline(res.Body as Readable, createWriteStream(destPath));
   }
 }

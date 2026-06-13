@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
+import { PrismaModule } from '@app/prisma';
+import { redisConnection } from '@app/queue';
+import { TranscriptionModule } from './transcription/transcription.module';
 
 /**
  * Módulo raíz del worker — el segundo proceso Node del plan (plan.md §1).
@@ -7,10 +11,15 @@ import { Module } from '@nestjs/common';
  * si el pipeline IA satura CPU o se cae, la API sigue sirviendo video.
  * La IA es mejora, no bloqueo (spec §6.2).
  *
- * En F4/F5 aquí se registran los procesadores BullMQ:
- * TranscriptionProcessor → MetadataProcessor → EmbeddingProcessor.
- * Por ahora está vacío a propósito: la Fase 0 solo exige que el target
- * `worker` exista, compile y arranque (plan.md §6, tabla de servicios).
+ * - BullModule.forRoot: misma conexión Redis que la API; el worker CONSUME.
+ * - TranscriptionModule (F4): job `transcribe` (audio → faster-whisper).
+ *   MetadataModule y EmbeddingModule se sumarán en F5.
  */
-@Module({})
+@Module({
+  imports: [
+    PrismaModule,
+    BullModule.forRoot({ connection: redisConnection() }),
+    TranscriptionModule,
+  ],
+})
 export class WorkerModule {}

@@ -25,6 +25,11 @@ services:
     image: redis:7-alpine
     ports:
       - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # MinIO = sustituto local de Cloudflare R2. Habla el mismo protocolo S3,
   # así que el código de la API no distingue entre dev y prod: solo cambia
@@ -85,10 +90,65 @@ services:
       minio:
         condition: service_started
 
-  # DEUDA (planificada): faltan los servicios `whisper` (F4), `ollama` (F5)
-  # y `worker` (F4). Se agregan cuando su fase los necesite — no antes,
-  # para no pagar arranques lentos de compose mientras no se usan.
+  # Contenedor de transcripción (F4): faster-whisper tras una API HTTP. El
+  # worker le manda el audio extraído y recibe el texto. Es el servicio más
+  # pesado del compose (carga un modelo en RAM) — por eso vive aislado.
+  whisper:
+    build:
+      context: ./infra/whisper
+      dockerfile: Dockerfile
+    environment:
+      # Modelo `small` por defecto (plan.md §2); cambiable sin tocar el código.
+      WHISPER_MODEL: small
+    ports:
+      - '8081:8081'
+    volumes:
+      # Cachea los modelos descargados entre reinicios: la primera vez baja
+      # `small` del Hub (~460 MB); sin el volumen lo re-bajaría en cada arranque.
+      - whisper-cache:/root/.cache/huggingface
+    healthcheck:
+      # El worker no debe mandar audio antes de que el modelo esté cargado.
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://localhost:8081/health\")"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      # start_period generoso: cargar el modelo la primera vez tarda.
+      start_period: 120s
+
+  # Worker BullMQ (F4): consume la cola `transcribe`. Proceso Node aparte de la
+  # API (plan.md §1) — si satura CPU transcribiendo, la API sigue sirviendo video.
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://libreplay:libreplay@db:5432/libreplay
+      REDIS_URL: redis://redis:6379
+      # Mismo storage que la API: el worker BAJA el MP4 para extraer el audio.
+      # No necesita S3_PUBLIC_ENDPOINT (no firma URLs para el navegador).
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: libreplay
+      S3_SECRET_KEY: libreplay123
+      S3_BUCKET: videos
+      # whisper por la red interna de compose.
+      WHISPER_URL: http://whisper:8081
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      whisper:
+        condition: service_healthy
+
+  # DEUDA (planificada): falta `ollama` (F5, metadata + embeddings). Se agrega
+  # cuando su fase lo use — no antes, para no pagar su arranque mientras no se usa.
 
 volumes:
   postgres-data:
   minio-data:
+  whisper-cache:

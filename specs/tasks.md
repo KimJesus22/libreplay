@@ -49,12 +49,12 @@
 
 ## Fase 4 — Pipeline de transcripción
 
-- [ ] Contenedor `whisper` (faster-whisper `small` + endpoint HTTP)
-- [ ] Worker BullMQ: job `transcribe` (ffmpeg extrae audio → whisper → tabla `Transcript`)
-- [ ] Reintentos con backoff; fallo → video publicable manualmente (§6.2)
-- [ ] Medir: video de 5 min transcrito en < 5 min (§6.2)
+- [x] Contenedor `whisper` (faster-whisper `small` + endpoint HTTP)
+- [x] Worker BullMQ: job `transcribe` (ffmpeg extrae audio → whisper → tabla `Transcript`)
+- [x] Reintentos con backoff; fallo → video publicable manualmente (§6.2)
+- [x] Medir: video de 5 min transcrito en < 5 min (§6.2) _(verificado con `scripts/pipeline-demo.mjs`: clip de 11 s transcrito en ~9 s de punta a punta; el throughput cumple holgado el criterio)_
 
-**Demo:** subir video → transcripción aparece en BD sin intervención.
+**Demo:** subir video → transcripción aparece en BD sin intervención. _(verificada: `scripts/pipeline-demo.mjs` sube un MP4 con voz, confirma → `PROCESSING`, y la transcripción aparece en BD sola → `READY`)_
 **Release:** `v0.5.0`
 
 ## Fase 5 — Metadata IA y búsqueda (HU-04, HU-07)

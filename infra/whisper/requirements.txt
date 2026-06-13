@@ -1,0 +1,8 @@
+# Versiones fijadas para builds reproducibles (plan.md: entorno reproducible).
+faster-whisper==1.0.3
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+# faster-whisper 1.0.3 importa `requests` (en utils) pero no lo declara como
+# dependencia directa — lo fijamos para que el import no falle al arrancar.
+requests==2.32.3

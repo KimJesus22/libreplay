@@ -8,6 +8,40 @@ El mapa de versiones por fase vive en `specs/plan.md` §9.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-13
+
+### Added
+- Pipeline de transcripción (F4, primer eslabón del pipeline IA, plan.md §5):
+  al confirmar una subida la API encola un job `transcribe` y el video pasa a
+  `PROCESSING`; el worker BullMQ extrae el audio con ffmpeg, lo manda al
+  contenedor faster-whisper y guarda la transcripción, devolviendo el video a
+  `READY` — todo sin intervención manual (criterio §6.2)
+- Contenedor `whisper` (`infra/whisper`): faster-whisper (`small`, int8 en CPU,
+  $0) tras una API HTTP FastAPI (`POST /transcribe`, `GET /health`); modelo
+  configurable por `WHISPER_MODEL`
+- Worker BullMQ operativo (`apps/worker`): `TranscriptionProcessor` con
+  reintentos (3, backoff exponencial); si el pipeline agota los intentos el
+  video queda `READY` con campos IA vacíos, publicable a mano (la IA es mejora,
+  no bloqueo — spec §6.2)
+- Modelo `Transcript` (1:1 con `Video`) y `Video.durationS` (migración
+  `20260613184012_add_transcript_pipeline`)
+- Lib compartida `@app/queue`: nombres de cola, tipos de job y conexión Redis
+  compartidos entre la API (productor) y el worker (consumidor)
+- `StorageService.downloadToFile()`: el worker baja el MP4 del storage para
+  extraer el audio (los bytes tampoco pasan por la API aquí)
+- Servicios `whisper` y `worker` en `docker-compose.yml` (con healthcheck de
+  Redis y whisper); `docker compose up` levanta el pipeline completo (§6.5)
+- Tests unitarios del worker (`pnpm test:unit`, sin servicios externos) y paso
+  `test:unit` en CI; script de demo `scripts/pipeline-demo.mjs` (subida →
+  transcripción en BD, cronometrada)
+
+### Changed
+- `POST /videos/:id/confirm` ahora deja el video en `PROCESSING` (antes
+  `READY`): el pipeline IA arranca solo. Si Redis está caído, cae a `READY`
+  (publicable) sin romper la subida
+- Los e2e (`videos`, `catalog`) requieren Redis arriba (`/confirm` encola); el
+  helper `uploadReady` fuerza `READY` en BD para simular el fin del pipeline
+
 ## [0.4.0] - 2026-06-13
 
 ### Added

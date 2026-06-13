@@ -26,7 +26,9 @@
       "@app/prisma": ["libs/prisma/src"],
       "@app/prisma/*": ["libs/prisma/src/*"],
       "@app/storage": ["libs/storage/src"],
-      "@app/storage/*": ["libs/storage/src/*"]
+      "@app/storage/*": ["libs/storage/src/*"],
+      "@app/queue": ["libs/queue/src"],
+      "@app/queue/*": ["libs/queue/src/*"]
     },
     "incremental": true,
     "skipLibCheck": true

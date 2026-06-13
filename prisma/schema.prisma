@@ -107,6 +107,35 @@ model Video {
   // semanas y publicado hoy debe salir arriba.
   publishedAt DateTime?
   createdAt   DateTime    @default(now())
-  // Campos IA (synopsis, tags, transcript, embedding, durationS) llegan con
-  // F4/F5 — cada modelo con su fase.
+  // Duración en segundos (F4): la reporta whisper al transcribir (de los
+  // timestamps de los segmentos). Null hasta que el pipeline corra o si falla.
+  // La usará "continuar viendo" en F6 y el texto a embeber en F5.
+  durationS   Int?
+  // Transcripción generada por el pipeline IA (F4). Relación 1:1 opcional:
+  // existe solo tras pasar por el worker; un fallo total deja el video sin
+  // transcript pero igualmente publicable (spec §6.2).
+  transcript  Transcript?
+  // Campos IA restantes (synopsis, tags, embedding) llegan con F5.
+}
+
+// ---------------------------------------------------------------------------
+// F4 — Pipeline de transcripción (plan.md §4/§5, spec §6.2)
+// ---------------------------------------------------------------------------
+
+// Transcripción del audio del video (faster-whisper). Tabla aparte y no una
+// columna en Video: el texto puede ser largo (miles de chars) y casi nunca se
+// lee junto al listado del catálogo — separarla evita arrastrarlo en cada
+// query de Video. Relación 1:1 por `videoId` como PK (un video → una
+// transcripción; re-transcribir hace upsert sobre la misma fila).
+model Transcript {
+  videoId   String   @id
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  // Texto plano concatenado de todos los segmentos. Sin timestamps por ahora:
+  // F5 solo necesita el texto para sinopsis/embedding; subtítulos con tiempos
+  // quedarían fuera de scope (spec §3, no hay reproductor con captions).
+  text      String
+  // Idioma detectado por whisper (ISO 639-1, p. ej. "es"). Útil para F5
+  // (el prompt del LLM) y para depurar transcripciones erróneas.
+  language  String
+  createdAt DateTime @default(now())
 }

@@ -46,10 +46,12 @@ SemVer with annotated tags + GitHub Releases; version-per-phase map lives in `sp
 - `pnpm install` then `pnpm prisma:generate` — first-time setup outside Docker (Node ≥ 22).
 - `pnpm lint` / `pnpm format` — ESLint (type-checked) / Prettier.
 - `pnpm build` — compiles `api` and `worker` to `dist/`.
-- `pnpm start:api` / `pnpm start:worker` — watch mode outside Docker (need Postgres/Redis running).
+- `pnpm start:api` / `pnpm start:worker` — watch mode outside Docker (need Postgres/Redis running; the worker also needs `WHISPER_URL` reachable).
 - `pnpm prisma:migrate` — create/apply a migration in dev (`prisma migrate dev`).
+- `pnpm test:unit` — worker unit tests (no external services; runs in CI).
+- `pnpm test:e2e` — API e2e (needs `docker compose up -d db redis minio`; PUT/Range hit MinIO for real).
 
-No tests yet — e2e tests arrive in F1; add the command here when they do.
+Since F4 the worker runs the `transcribe` job: `confirm` enqueues it and the video goes `PROCESSING` → (faster-whisper) → `READY`. Full pipeline demo: `docker compose up` then `node scripts/pipeline-demo.mjs <mp4-con-voz>`.
 
 ## Code style
 

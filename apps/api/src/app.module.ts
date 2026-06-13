@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { TerminusModule } from '@nestjs/terminus';
 import { PrismaModule } from '@app/prisma';
+import { redisConnection } from '@app/queue';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { HealthController } from './health/health.controller';
@@ -14,6 +16,9 @@ import { VideosModule } from './videos/videos.module';
  * catalog...) será su propio módulo importado aquí. Por ahora:
  * - PrismaModule (global): acceso a Postgres para toda la app.
  * - TerminusModule: infraestructura de health checks para /health.
+ * - BullModule.forRoot: conexión Redis compartida para las colas BullMQ del
+ *   pipeline IA (F4). La API solo PRODUCE jobs (`transcribe` al confirmar una
+ *   subida); el worker los consume en su propio proceso.
  * - AuthModule (F1): endpoints /auth/* y los guards globales JWT + roles.
  * - VideosModule (F2): subida por presigned PUT y gestión del uploader.
  * - CatalogModule (F3): catálogo público (listado + detalle).
@@ -23,6 +28,7 @@ import { VideosModule } from './videos/videos.module';
   imports: [
     PrismaModule,
     TerminusModule,
+    BullModule.forRoot({ connection: redisConnection() }),
     AuthModule,
     VideosModule,
     CatalogModule,

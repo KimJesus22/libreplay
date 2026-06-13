@@ -3,11 +3,19 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Video, VideoStatus } from '@prisma/client';
 import { PrismaService } from '@app/prisma';
 import { StorageService } from '@app/storage';
+import {
+  TRANSCRIBE_QUEUE,
+  TRANSCRIBE_JOB,
+  type TranscribeJobData,
+} from '@app/queue';
 import { randomUUID } from 'node:crypto';
 import { validateEnv } from '../config/env';
 import { CreateVideoDto, UpdateVideoDto } from './dto/create-video.dto';
@@ -27,6 +35,7 @@ const VIDEO_CONTENT_TYPE = 'video/mp4';
 
 @Injectable()
 export class VideosService {
+  private readonly logger = new Logger(VideosService.name);
   // bytes; configurable por env (plan.md §8) — default 500 MB.
   private readonly maxSizeBytes =
     validateEnv().MAX_VIDEO_SIZE_MB * 1024 * 1024;
@@ -34,6 +43,11 @@ export class VideosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    // Cola del pipeline IA (F4): aquí se ENCOLA el job `transcribe`. El worker,
+    // en otro proceso, lo consume. Tipada con TranscribeJobData para que el
+    // payload no se desincronice con el consumidor.
+    @InjectQueue(TRANSCRIBE_QUEUE)
+    private readonly transcribeQueue: Queue<TranscribeJobData>,
   ) {}
 
   /**
@@ -111,12 +125,30 @@ export class VideosService {
       );
     }
 
-    // DEUDA (F4): aquí se encolará el job `transcribe` y el estado pasará a
-    // PROCESSING. Sin pipeline todavía, READY es el estado honesto.
-    return this.prisma.video.update({
-      where: { id },
-      data: { status: VideoStatus.READY },
-    });
+    // Pipeline IA (F4): encolar el job `transcribe` y pasar a PROCESSING. El
+    // worker transcribirá y devolverá el video a READY (o, si agota reintentos,
+    // a READY con campos IA vacíos — la IA es mejora, no bloqueo, spec §6.2).
+    //
+    // Si Redis está caído, encolar lanza: NO rompemos la subida. Caemos a READY
+    // (el video es publicable a mano, mismo principio del §6.2) y dejamos
+    // constancia en el log. Un video confirmado y subido no puede quedar
+    // inutilizable porque la cola, que es opcional, no esté disponible.
+    try {
+      await this.transcribeQueue.add(TRANSCRIBE_JOB, { videoId: id });
+      return this.prisma.video.update({
+        where: { id },
+        data: { status: VideoStatus.PROCESSING },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo encolar transcribe para ${id} (${(err as Error).message}); ` +
+          'el video queda READY y publicable a mano.',
+      );
+      return this.prisma.video.update({
+        where: { id },
+        data: { status: VideoStatus.READY },
+      });
+    }
   }
 
   async update(id: string, userId: string, dto: UpdateVideoDto): Promise<Video> {

@@ -1,24 +1,27 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { WorkerModule } from './worker.module';
+import { validateEnv } from './config/env';
 
 /**
  * Punto de entrada del worker.
  *
  * A diferencia de la API, aquí se usa createApplicationContext: levanta el
  * sistema de inyección de dependencias de Nest SIN servidor HTTP. El worker
- * no atiende requests — consume jobs de Redis (BullMQ, a partir de F4).
+ * no atiende requests — consume jobs de Redis (BullMQ).
  */
 async function bootstrap() {
+  // Falla rápido si el entorno está mal (DATABASE_URL, REDIS_URL, WHISPER_URL…)
+  // antes de conectar a nada — mismo principio que la API.
+  validateEnv();
+
   const app = await NestFactory.createApplicationContext(WorkerModule);
   app.enableShutdownHooks(); // docker stop → SIGTERM → cierre limpio
 
-  console.log('Worker arrancado — sin procesadores registrados todavía (F4)');
+  Logger.log('Worker arrancado — consumiendo la cola `transcribe` (F4)', 'Bootstrap');
 
-  // Sin consumidores BullMQ el event loop queda vacío y Node terminaría el
-  // proceso de inmediato. Esta promesa que nunca resuelve lo mantiene vivo
-  // para poder demostrar que arranca. SE BORRA en F4: las conexiones de
-  // BullMQ a Redis mantendrán vivo el proceso por sí solas.
-  await new Promise(() => undefined);
+  // Ya no hace falta la promesa-ancla de F0: las conexiones de BullMQ a Redis
+  // mantienen vivo el event loop mientras esperan jobs.
 }
 
 void bootstrap();
