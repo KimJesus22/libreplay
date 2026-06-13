@@ -24,7 +24,9 @@
     // rutas relativas frágiles tipo '../../../libs/prisma/src'.
     "paths": {
       "@app/prisma": ["libs/prisma/src"],
-      "@app/prisma/*": ["libs/prisma/src/*"]
+      "@app/prisma/*": ["libs/prisma/src/*"],
+      "@app/storage": ["libs/storage/src"],
+      "@app/storage/*": ["libs/storage/src/*"]
     },
     "incremental": true,
     "skipLibCheck": true

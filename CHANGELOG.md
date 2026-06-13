@@ -8,6 +8,33 @@ El mapa de versiones por fase vive en `specs/plan.md` §9.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-13
+
+### Added
+- Subida de videos por presigned PUT (F2, HU-03): `POST /videos` valida MP4 y
+  tamaño ≤ 500 MB (`MAX_VIDEO_SIZE_MB` configurable) y firma una URL PUT atada
+  a Content-Type y Content-Length — los bytes del video nunca pasan por la API
+- `POST /videos/:id/confirm`: la API verifica el objeto real en storage
+  (HeadObject) antes de marcar el video `READY`; tamaño ≠ declarado → descarta
+- `PATCH /videos/:id` (título/descripción) y `DELETE /videos/:id`, ambos solo
+  del dueño (ajeno → `403`); todo el controller exige rol `UPLOADER`/`ADMIN`
+- Modelo `Video` con estados `UPLOADING`/`PROCESSING`/`READY`/`PUBLISHED`/
+  `HIDDEN`/`FAILED` (migración `20260612150623_add_video_upload`)
+- Lib compartida `@app/storage`: cliente S3 único para MinIO (dev) y
+  Cloudflare R2 (prod), con firma de URLs por endpoint público separado
+- Script de demo `scripts/upload-demo.mjs`: flujo completo login → registro →
+  PUT con progreso → confirmación contra MinIO real
+- Tests e2e de videos (`videos.e2e-spec.ts`): PUT real contra MinIO, rechazo de
+  Content-Type no firmado, validaciones y propiedad
+
+### Changed
+- El test de `403` de §6.4 ahora apunta al endpoint real `POST /videos` en vez
+  del controller de prueba del e2e
+- `test:e2e` corre con `--experimental-vm-modules` (vía `cross-env`): el AWS SDK
+  hace un `import()` dinámico que el VM de Jest rechaza sin ese flag
+- `docker compose`: la API recibe variables `S3_*` y `JWT_SECRET`, y depende del
+  servicio `minio`
+
 ## [0.2.0] - 2026-06-12
 
 ### Added

@@ -18,6 +18,19 @@ const envSchema = z.object({
   // 16 chars mínimo: rechaza secretos vacíos o de juguete sin impedir el
   // placeholder de .env.example en dev.
   JWT_SECRET: z.string().min(16),
+
+  // --- Storage S3 (F2): MinIO en dev, Cloudflare R2 en prod ---
+  S3_ENDPOINT: z.url(),
+  // Endpoint que va DENTRO de las URLs prefirmadas. Difiere del anterior
+  // cuando la API corre en compose: ella alcanza MinIO como http://minio:9000
+  // pero el cliente (navegador/host) necesita http://localhost:9000 — y la
+  // firma S3 incluye el host, así que no se puede reescribir después.
+  S3_PUBLIC_ENDPOINT: z.url().optional(),
+  S3_ACCESS_KEY: z.string().min(1),
+  S3_SECRET_KEY: z.string().min(1),
+  S3_BUCKET: z.string().min(1),
+  // Límite de subida configurable por env (plan.md §8).
+  MAX_VIDEO_SIZE_MB: z.coerce.number().int().positive().default(500),
 });
 
 export type Env = z.infer<typeof envSchema>;

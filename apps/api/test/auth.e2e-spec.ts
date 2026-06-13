@@ -6,38 +6,18 @@
 // la BD real de dev: mockear Prisma aquí dejaría sin probar justo lo que
 // importa (unique de email, persistencia del hash de refresh).
 import 'dotenv/config';
-import { Controller, Get, INestApplication } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '@app/prisma';
-import { Role } from '@prisma/client';
 import * as request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
-import { Roles } from '../src/auth/decorators/roles.decorator';
 
 /** Forma del body que devuelven los tres endpoints de /auth. */
 interface AuthBody {
   user: { id: string; email: string; role: string; password?: string };
   accessToken: string;
-}
-
-// Endpoints de prueba para ejercitar los guards: el endpoint real de
-// uploader (POST /videos) llega en F2; cuando exista, el test de 403 puede
-// apuntarle. Mientras tanto esto prueba exactamente el mismo camino:
-// APP_GUARDs globales + metadata @Roles.
-@Controller('e2e-guards')
-class GuardsTestController {
-  @Get('protegido')
-  protegido() {
-    return { ok: true };
-  }
-
-  @Roles(Role.UPLOADER)
-  @Get('solo-uploader')
-  soloUploader() {
-    return { ok: true };
-  }
 }
 
 // Email único por corrida: los tests no chocan con datos de corridas
@@ -55,7 +35,6 @@ describe('Auth (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-      controllers: [GuardsTestController],
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -126,37 +105,29 @@ describe('Auth (e2e)', () => {
     });
   });
 
+  // Contra el endpoint real de uploader (POST /videos, F2). El camino feliz
+  // del uploader (200) vive en videos.e2e-spec.ts.
   describe('guards (§6.4)', () => {
     it('endpoint protegido sin token → 401', async () => {
-      await request(http).get('/e2e-guards/protegido').expect(401);
+      await request(http).post('/videos').expect(401);
     });
 
     it('endpoint protegido con token de mentira → 401', async () => {
       await request(http)
-        .get('/e2e-guards/protegido')
+        .post('/videos')
         .set('Authorization', 'Bearer token-falso')
         .expect(401);
     });
 
-    it('endpoint protegido con token válido → 200', async () => {
+    it('viewer en endpoint de uploader → 403 (no 401: el token sí valió)', async () => {
       const login = await request(http)
         .post('/auth/login')
         .send({ email: EMAIL, password: PASSWORD });
 
       await request(http)
-        .get('/e2e-guards/protegido')
+        .post('/videos')
         .set('Authorization', `Bearer ${(login.body as AuthBody).accessToken}`)
-        .expect(200);
-    });
-
-    it('viewer en endpoint de uploader → 403', async () => {
-      const login = await request(http)
-        .post('/auth/login')
-        .send({ email: EMAIL, password: PASSWORD });
-
-      await request(http)
-        .get('/e2e-guards/solo-uploader')
-        .set('Authorization', `Bearer ${(login.body as AuthBody).accessToken}`)
+        .send({ title: 'x', fileName: 'x.mp4', sizeBytes: 1 })
         .expect(403);
     });
   });

@@ -27,10 +27,11 @@
 
 ## Fase 2 — Subida de videos (HU-03)
 
-- [ ] Modelo `Video` + estados; lib `storage` (SDK S3 → MinIO/R2)
-- [ ] Flujo presigned PUT: `POST /videos` valida MP4 ≤ 500 MB y devuelve URL; confirmación de subida
-- [ ] `PATCH /videos/:id` (título/descripción), `DELETE` propio
-- [ ] Progreso de subida en cliente (XHR sobre presigned URL)
+- [x] Modelo `Video` + estados; lib `storage` (SDK S3 → MinIO/R2)
+- [x] Flujo presigned PUT: `POST /videos` valida MP4 ≤ 500 MB y devuelve URL; confirmación de subida (`POST /videos/:id/confirm` verifica el objeto vía HeadObject)
+- [x] `PATCH /videos/:id` (título/descripción), `DELETE` propio
+- [x] Progreso de subida en cliente (XHR sobre presigned URL) _(demostrado en `scripts/upload-demo.mjs`: cuenta bytes del stream; la isla del frontend en F7 hará lo mismo con `xhr.upload.onprogress`)_
+- [x] Tests e2e (`videos.e2e-spec.ts`): PUT real contra MinIO, firma rechaza Content-Type distinto, propiedad PATCH/DELETE (403 ajeno), `POST /videos` ejercita el 401/403 de §6.4
 
 **Demo:** subir un MP4 real desde un script/cliente y verlo en MinIO.
 **Release:** `v0.3.0`

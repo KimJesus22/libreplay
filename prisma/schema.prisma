@@ -43,5 +43,41 @@ model User {
   // el futuro hace falta multi-dispositivo, esto se extrae a su propia tabla.
   refreshTokenHash String?
   createdAt DateTime @default(now())
+  videos    Video[]
   // Relaciones favorites/history llegan en F6 con sus modelos.
+}
+
+// ---------------------------------------------------------------------------
+// F2 — Subida de videos (plan.md §4, HU-03)
+// ---------------------------------------------------------------------------
+
+enum VideoStatus {
+  // UPLOADING no estaba en el plan original (plan.md §4): existe porque entre
+  // emitir la URL prefirmada y la confirmación del cliente, el objeto puede
+  // no llegar nunca (tab cerrada, red caída). Sin este estado, esos registros
+  // fantasma serían indistinguibles de videos reales en proceso.
+  UPLOADING
+  PROCESSING // pipeline IA corriendo (F4/F5)
+  READY // listo para que el uploader revise y publique
+  PUBLISHED
+  HIDDEN // ocultado por un admin (F6)
+  FAILED
+}
+
+model Video {
+  id          String      @id @default(uuid())
+  ownerId     String
+  owner       User        @relation(fields: [ownerId], references: [id])
+  title       String
+  description String?
+  // Clave del objeto en MinIO/R2 (`videos/<id>.mp4`). La BD guarda la
+  // referencia, nunca los bytes — el video no pasa por la API (plan.md §3).
+  storageKey  String      @unique
+  // Tamaño DECLARADO al pedir la URL; /confirm lo coteja contra el objeto
+  // real en storage. Int basta: el límite es 500 MB << 2^31.
+  sizeBytes   Int
+  status      VideoStatus @default(UPLOADING)
+  createdAt   DateTime    @default(now())
+  // Campos IA (synopsis, tags, categories, transcript, embedding, durationS)
+  // llegan con F4/F5 — cada modelo con su fase.
 }

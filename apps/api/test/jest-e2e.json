@@ -7,6 +7,7 @@
     "^.+\\.ts$": ["ts-jest", { "tsconfig": "<rootDir>/../../../tsconfig.json" }]
   },
   "moduleNameMapper": {
-    "^@app/prisma$": "<rootDir>/../../../libs/prisma/src"
+    "^@app/prisma$": "<rootDir>/../../../libs/prisma/src",
+    "^@app/storage$": "<rootDir>/../../../libs/storage/src"
   }
 }

@@ -17,9 +17,10 @@ import tseslint from 'typescript-eslint';
  *    pelearían por dónde van las comas.
  */
 export default tseslint.config(
-  // Qué no se analiza: artefactos de build y este propio archivo (es .mjs,
-  // no pertenece a ningún tsconfig y el modo type-checked fallaría con él).
-  { ignores: ['dist/**', 'node_modules/**', 'eslint.config.mjs'] },
+  // Qué no se analiza: artefactos de build y los .mjs sueltos (este archivo
+  // y scripts/) — no pertenecen a ningún tsconfig y el modo type-checked
+  // fallaría con ellos. scripts/ son utilidades de demo, no código de la app.
+  { ignores: ['dist/**', 'node_modules/**', 'eslint.config.mjs', 'scripts/**'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   eslintConfigPrettier,
