@@ -211,4 +211,59 @@ describe('Videos (e2e)', () => {
       ).toBeNull();
     });
   });
+
+  describe('revisión del uploader (F5, HU-04)', () => {
+    let videoId: string;
+
+    beforeAll(async () => {
+      const res = await createUpload(uploaderToken).expect(201);
+      videoId = (res.body as CreatedUpload).video.id;
+    });
+
+    it('GET /review: del dueño → 200 con campos IA; de otro → 403; inexistente → 404', async () => {
+      const own = await request(http)
+        .get(`/videos/${videoId}/review`)
+        .set('Authorization', `Bearer ${uploaderToken}`)
+        .expect(200);
+      const body = own.body as { id: string; synopsis: string | null; tags: string[] };
+      expect(body.id).toBe(videoId);
+      // Campos IA presentes aunque vacíos (el pipeline aún no corrió).
+      expect(body).toHaveProperty('synopsis');
+      expect(Array.isArray(body.tags)).toBe(true);
+
+      await request(http)
+        .get(`/videos/${videoId}/review`)
+        .set('Authorization', `Bearer ${intrusoToken}`)
+        .expect(403);
+
+      await request(http)
+        .get('/videos/00000000-0000-4000-8000-000000000000/review')
+        .set('Authorization', `Bearer ${uploaderToken}`)
+        .expect(404);
+    });
+
+    it('PATCH de synopsis/tags persiste (editar sugerencias antes de publicar)', async () => {
+      await request(http)
+        .patch(`/videos/${videoId}`)
+        .set('Authorization', `Bearer ${uploaderToken}`)
+        .send({ synopsis: 'Sinopsis revisada a mano', tags: ['drama', 'corto'] })
+        .expect(200);
+
+      const review = await request(http)
+        .get(`/videos/${videoId}/review`)
+        .set('Authorization', `Bearer ${uploaderToken}`)
+        .expect(200);
+      const body = review.body as { synopsis: string; tags: string[] };
+      expect(body.synopsis).toBe('Sinopsis revisada a mano');
+      expect(body.tags).toEqual(['drama', 'corto']);
+    });
+
+    it('PATCH rechaza un tag que no es string → 400', async () => {
+      await request(http)
+        .patch(`/videos/${videoId}`)
+        .set('Authorization', `Bearer ${uploaderToken}`)
+        .send({ tags: [123] })
+        .expect(400);
+    });
+  });
 });

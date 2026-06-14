@@ -1,7 +1,8 @@
-// Tests unitarios del processor de transcripción (F4). NO levanta Redis,
+// Tests unitarios del processor de transcripción (F4/F5). NO levanta Redis,
 // whisper ni ffmpeg: el objetivo es la LÓGICA de orquestación —caso feliz
-// guarda Transcript + READY; fallo total deja READY publicable (spec §6.2)—.
-// El pipeline real (con whisper de verdad) se prueba en scripts/pipeline-demo.mjs.
+// guarda Transcript + encola `metadata` (el video sigue PROCESSING); fallo
+// total deja READY publicable (spec §6.2)—. El pipeline real (con whisper de
+// verdad) se prueba en scripts/pipeline-demo.mjs.
 import { VideoStatus } from '@prisma/client';
 import { TranscriptionProcessor } from './transcription.processor';
 import * as ffmpeg from './ffmpeg';
@@ -24,12 +25,14 @@ describe('TranscriptionProcessor', () => {
     };
     const storage = { downloadToFile: jest.fn().mockResolvedValue(undefined) };
     const whisper = { transcribe: jest.fn() };
+    const metadataQueue = { add: jest.fn().mockResolvedValue(undefined) };
     const processor = new TranscriptionProcessor(
       prisma as never,
       storage as never,
       whisper as never,
+      metadataQueue as never,
     );
-    return { processor, prisma, storage, whisper };
+    return { processor, prisma, storage, whisper, metadataQueue };
   }
 
   beforeEach(() => {
@@ -37,8 +40,8 @@ describe('TranscriptionProcessor', () => {
     extractAudio.mockResolvedValue(undefined);
   });
 
-  it('caso feliz: baja, extrae, transcribe → Transcript + video READY', async () => {
-    const { processor, prisma, storage, whisper } = build();
+  it('caso feliz: baja, extrae, transcribe → Transcript + encola metadata', async () => {
+    const { processor, prisma, storage, whisper, metadataQueue } = build();
     prisma.video.findUnique.mockResolvedValue({
       id: 'vid-1',
       storageKey: 'videos/vid-1.mp4',
@@ -65,11 +68,14 @@ describe('TranscriptionProcessor', () => {
         create: { videoId: 'vid-1', text: 'hola mundo', language: 'es' },
       }),
     );
-    // durationS redondeado y estado READY.
+    // durationS redondeado; NO se pone READY (el video sigue PROCESSING hasta
+    // que embed lo cierre).
     expect(prisma.video.update).toHaveBeenCalledWith({
       where: { id: 'vid-1' },
-      data: { durationS: 13, status: VideoStatus.READY },
+      data: { durationS: 13 },
     });
+    // Encola el siguiente eslabón del pipeline.
+    expect(metadataQueue.add).toHaveBeenCalledWith('metadata', { videoId: 'vid-1' });
   });
 
   it('si el video ya no existe, descarta el job sin tocar storage', async () => {

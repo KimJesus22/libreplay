@@ -115,7 +115,26 @@ model Video {
   // existe solo tras pasar por el worker; un fallo total deja el video sin
   // transcript pero igualmente publicable (spec §6.2).
   transcript  Transcript?
-  // Campos IA restantes (synopsis, tags, embedding) llegan con F5.
+
+  // --- Campos IA de F5 (plan.md §5) ---
+  // Sinopsis generada por el LLM (Ollama qwen2.5) desde la transcripción. El
+  // uploader la revisa y edita antes de publicar (HU-04) — por eso es editable
+  // y opcional: null hasta que corra el job `metadata`, o si este falla.
+  synopsis    String?
+  // Etiquetas sugeridas por el LLM (texto libre, a diferencia de `categories`
+  // que es enum cerrado). También editables por el uploader antes de publicar.
+  tags        String[]    @default([])
+  // Embedding semántico (bge-m3, 1024 dims) de sinopsis+transcript, generado
+  // por el job `embed`. `Unsupported`: Prisma no tipa pgvector — se lee/escribe
+  // con SQL crudo ($queryRaw con el operador `<=>`). Null si no se generó.
+  // Índice HNSW (vector_cosine_ops) creado en la migración, no aquí.
+  embedding   Unsupported("vector(1024)")?
+  // Vector de texto para la búsqueda full-text (modo `text` de GET /search).
+  // Columna GENERATED STORED (la calcula Postgres desde title+description+
+  // synopsis en la migración) con índice GIN — no se escribe desde la app,
+  // solo se consulta con `@@ websearch_to_tsquery`. Unsupported: Prisma no
+  // tipa tsvector; el cliente nunca la selecciona.
+  searchVector Unsupported("tsvector")?
 }
 
 // ---------------------------------------------------------------------------

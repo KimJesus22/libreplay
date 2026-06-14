@@ -28,7 +28,9 @@
       "@app/storage": ["libs/storage/src"],
       "@app/storage/*": ["libs/storage/src/*"],
       "@app/queue": ["libs/queue/src"],
-      "@app/queue/*": ["libs/queue/src/*"]
+      "@app/queue/*": ["libs/queue/src/*"],
+      "@app/ai": ["libs/ai/src"],
+      "@app/ai/*": ["libs/ai/src/*"]
     },
     "incremental": true,
     "skipLibCheck": true

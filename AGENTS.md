@@ -6,7 +6,7 @@ Guidance for AI coding agents working in this repository.
 
 LibrePlay — a free video streaming platform (portfolio project). Backend-first rebuild of a React + Supabase app, now with its own NestJS backend, an AI pipeline that auto-catalogs uploaded videos, and an Astro frontend. UI language and all spec documents are Spanish.
 
-The repo follows spec-driven development. Implementation is in **phase F0** (foundations): the NestJS monorepo scaffold exists (`apps/api` with `/health` + Swagger, `apps/worker` placeholder, `libs/prisma`), with Prisma + pgvector wired and CI in place.
+The repo follows spec-driven development. Implementation is through **phase F5** (`v0.6.0`): auth (F1), uploads to MinIO/R2 (F2), public catalog + streaming with seek (F3), and the full AI pipeline (`transcribe` → `metadata` → `embed`, F4/F5) plus text/semantic search are done. Next up is **F6** (favorites, history, admin). The Astro frontend (F7) and deploy (F8) remain.
 
 ## Spec-driven workflow
 
@@ -23,9 +23,9 @@ Out-of-scope items (spec §3) are deliberate: no transcoding/HLS, no DRM, no CDN
 Monorepo with two NestJS Node processes plus an Astro site:
 
 - `apps/api` — synchronous HTTP: auth (JWT access 15min + rotating refresh in httpOnly cookie, argon2 hashes, roles VIEWER/UPLOADER/ADMIN), catalog, search, favorites/history, presigned URL issuance.
-- `apps/worker` — BullMQ consumer running the AI pipeline as three chained jobs: `transcribe` (ffmpeg → faster-whisper container) → `metadata` (local LLM via Ollama `qwen2.5:3b-instruct` behind a `MetadataGenerator` port, schema-forced JSON validated with Zod; an optional Claude adapter exists behind `METADATA_PROVIDER=claude`) → `embed` (Ollama `bge-m3`, 1024-dim multilingual → pgvector).
+- `apps/worker` — BullMQ consumer running the AI pipeline as three chained jobs: `transcribe` (ffmpeg → faster-whisper container) → `metadata` (local LLM via Ollama `qwen2.5:3b-instruct` behind a `MetadataGenerator` port, schema-forced JSON validated with Zod; the port is the extension point for a future Claude adapter — only the Ollama adapter ships today) → `embed` (Ollama `bge-m3`, 1024-dim multilingual → pgvector).
 - `apps/web` — **Astro + TypeScript + Tailwind CSS** consuming the REST API. Islands architecture: only the player, search, and upload form hydrate as interactive islands (vanilla TS / Astro components — no React or other UI framework); everything else ships as static/SSR HTML.
-- Shared code in `libs/` (`prisma`, `storage`, `queue`).
+- Shared code in `libs/` (`prisma`, `storage`, `queue`, `ai`). `ai` (`@app/ai`) holds the Ollama clients: `EmbeddingsService` (bge-m3, used by both worker and API) and the `MetadataGenerator` port + Ollama adapter (worker only).
 
 Load-bearing decisions:
 
@@ -51,7 +51,7 @@ SemVer with annotated tags + GitHub Releases; version-per-phase map lives in `sp
 - `pnpm test:unit` — worker unit tests (no external services; runs in CI).
 - `pnpm test:e2e` — API e2e (needs `docker compose up -d db redis minio`; PUT/Range hit MinIO for real).
 
-Since F4 the worker runs the `transcribe` job: `confirm` enqueues it and the video goes `PROCESSING` → (faster-whisper) → `READY`. Full pipeline demo: `docker compose up` then `node scripts/pipeline-demo.mjs <mp4-con-voz>`.
+Since F5 the worker runs the full chained pipeline: `confirm` enqueues `transcribe`, the video stays `PROCESSING` through `transcribe` → `metadata` → `embed`, and only `embed` (the terminal stage) flips it to `READY`. Each stage fails in isolation; on total failure the video still reaches `READY` (publishable). Public `GET /search?mode=text|semantic` (module `search`) searches PUBLISHED videos via tsvector or pgvector cosine. Full demos: `docker compose up` then `node scripts/pipeline-demo.mjs <mp4-con-voz>` (transcription only) or `node scripts/metadata-search-demo.mjs <mp4-con-voz>` (full pipeline + semantic search).
 
 ## Code style
 

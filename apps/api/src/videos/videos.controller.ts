@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -61,8 +62,21 @@ export class VideosController {
     return this.videos.publish(id, req.user!.sub);
   }
 
+  @Get(':id/review')
+  @ApiOperation({
+    summary: 'Detalle propio para revisar las sugerencias IA antes de publicar',
+  })
+  @ApiResponse({ status: 403, description: 'El video es de otro usuario' })
+  @ApiResponse({ status: 404, description: 'Video no encontrado' })
+  review(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.videos.getReview(id, req.user!.sub);
+  }
+
   @Patch(':id')
-  @ApiOperation({ summary: 'Editar título/descripción/categorías de un video propio' })
+  @ApiOperation({ summary: 'Editar título/descripción/categorías/synopsis/tags de un video propio' })
   @ApiResponse({ status: 403, description: 'El video es de otro usuario' })
   update(
     @Req() req: AuthenticatedRequest,

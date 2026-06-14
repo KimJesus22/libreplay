@@ -59,9 +59,9 @@ export class UpdateVideoDto {
   @MaxLength(5000)
   description?: string;
 
-  // Categorías del enum cerrado (F3). El uploader las ajusta a mano hasta que
-  // el pipeline (F5) las sugiera. `@IsEnum` cada elemento → un valor fuera de
-  // la lista da 400, nunca llega a la BD.
+  // Categorías del enum cerrado (F3). El pipeline (F5) las sugiere; el uploader
+  // las ajusta antes de publicar (HU-04). `@IsEnum` cada elemento → un valor
+  // fuera de la lista da 400, nunca llega a la BD.
   @ApiPropertyOptional({
     enum: Category,
     isArray: true,
@@ -72,4 +72,22 @@ export class UpdateVideoDto {
   @ArrayUnique()
   @IsEnum(Category, { each: true })
   categories?: Category[];
+
+  // Sinopsis sugerida por el pipeline IA (F5), editable por el uploader antes
+  // de publicar (HU-04). Mismo tope que la generación del LLM.
+  @ApiPropertyOptional({ maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  synopsis?: string;
+
+  // Tags sugeridos por la IA (F5), editables. Texto libre (a diferencia de
+  // categories): palabras clave cortas, sin duplicados.
+  @ApiPropertyOptional({ isArray: true, example: ['robot', 'introspección'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  tags?: string[];
 }

@@ -28,6 +28,17 @@ const envSchema = z.object({
   // video largo en CPU tarda; el criterio §6.2 (5 min de video < 5 min) es para
   // el caso típico, no un tope duro de la request.
   WHISPER_TIMEOUT_MS: z.coerce.number().int().positive().default(600000),
+
+  // --- Ollama (F5): metadata (LLM) + embeddings ---
+  // URL del servicio Ollama. En compose es http://ollama:11434.
+  OLLAMA_URL: z.url(),
+  // Modelo del LLM de metadata (sinopsis/categorías/tags). qwen2.5:3b por
+  // defecto (plan.md §2): equilibrio calidad/RAM en CPU, costo $0.
+  METADATA_MODEL: z.string().min(1).default('qwen2.5:3b-instruct'),
+  // Modelo de embeddings: bge-m3 (multilingüe, 1024 dims → vector(1024)).
+  EMBED_MODEL: z.string().min(1).default('bge-m3'),
+  // Timeout de las llamadas a Ollama (generación y embedding) en ms.
+  OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
 });
 
 export type WorkerEnv = z.infer<typeof envSchema>;

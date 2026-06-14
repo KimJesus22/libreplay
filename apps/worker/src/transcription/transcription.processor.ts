@@ -1,9 +1,20 @@
 import { Logger } from '@nestjs/common';
-import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
+import {
+  Processor,
+  WorkerHost,
+  OnWorkerEvent,
+  InjectQueue,
+} from '@nestjs/bullmq';
+import { Job, Queue } from 'bullmq';
 import { PrismaService } from '@app/prisma';
 import { StorageService } from '@app/storage';
-import { TRANSCRIBE_QUEUE, type TranscribeJobData } from '@app/queue';
+import {
+  TRANSCRIBE_QUEUE,
+  METADATA_QUEUE,
+  METADATA_JOB,
+  type TranscribeJobData,
+  type MetadataJobData,
+} from '@app/queue';
 import { VideoStatus } from '@prisma/client';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,10 +26,11 @@ import { WhisperClient } from './whisper.client';
  * Primer eslabón del pipeline IA (plan.md §5): transcribe el audio de un video.
  *
  * Flujo: baja el MP4 del storage → ffmpeg extrae el audio → whisper transcribe →
- * guarda el Transcript y devuelve el video a READY (publicable). Los reintentos
+ * guarda el Transcript y ENCOLA el siguiente eslabón (`metadata`); el video sigue
+ * PROCESSING hasta que `embed` (la etapa terminal) lo deje READY. Los reintentos
  * (3, backoff exponencial) los configura el PRODUCTOR en la cola; aquí solo se
  * lanza la excepción y BullMQ reintenta. Si se agotan, `onFailed` deja el video
- * READY igualmente: la IA es mejora, no bloqueo (spec §6.2).
+ * READY igualmente (sin metadata ni embedding): la IA es mejora, no bloqueo (spec §6.2).
  */
 @Processor(TRANSCRIBE_QUEUE)
 export class TranscriptionProcessor extends WorkerHost {
@@ -28,6 +40,10 @@ export class TranscriptionProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly whisper: WhisperClient,
+    // Segundo eslabón del pipeline: tras transcribir, este processor ENCOLA el
+    // job `metadata`. El worker es productor además de consumidor (plan.md §5).
+    @InjectQueue(METADATA_QUEUE)
+    private readonly metadataQueue: Queue<MetadataJobData>,
   ) {
     super();
   }
@@ -63,15 +79,20 @@ export class TranscriptionProcessor extends WorkerHost {
         update: { text: result.text, language: result.language },
       });
 
+      // Guarda la duración pero NO pasa a READY: el video sigue PROCESSING
+      // mientras corren metadata y embed. Solo `embed` (etapa terminal) o un
+      // fallo total lo dejan READY.
       await this.prisma.video.update({
         where: { id: videoId },
-        data: {
-          durationS: Math.round(result.durationS),
-          status: VideoStatus.READY,
-        },
+        data: { durationS: Math.round(result.durationS) },
       });
 
-      this.logger.log(`Video ${videoId} transcrito → READY`);
+      // Encola el siguiente eslabón. Si esto lanza (Redis caído), el job de
+      // transcripción se marca fallido y BullMQ reintenta — el Transcript ya
+      // está guardado, así que el reintento es barato (upsert idempotente).
+      await this.metadataQueue.add(METADATA_JOB, { videoId });
+
+      this.logger.log(`Video ${videoId} transcrito → encolado metadata`);
     } finally {
       // Limpieza siempre: un proceso de larga vida no puede ir dejando MP4s y
       // WAVs en /tmp. `force` no falla si el dir ya no está.

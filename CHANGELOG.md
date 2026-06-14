@@ -8,6 +8,51 @@ El mapa de versiones por fase vive en `specs/plan.md` §9.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-13
+
+### Added
+- Metadata IA y búsqueda (F5, cierra el pipeline IA, plan.md §5): el worker
+  encadena `transcribe → metadata → embed`; cada etapa es un job independiente
+  con reintentos y fallo aislado, y solo la última (`embed`) deja el video en
+  `READY`. El video SIEMPRE alcanza `READY` y es publicable a mano, falle la
+  etapa que falle (la IA es mejora, no bloqueo — spec §6.2)
+- Generación de metadata por LLM (job `metadata`): `qwen2.5:3b-instruct` vía
+  Ollama produce sinopsis + categorías (enum cerrado) + tags desde la
+  transcripción, con la salida forzada por JSON Schema (`z.toJSONSchema`) y
+  re-validada con Zod. Vive tras el puerto `MetadataGenerator` (lib `@app/ai`):
+  el adaptador Ollama es el default $0; cambiar a Claude es reemplazar el
+  provider sin tocar el pipeline (plan.md §5)
+- Embeddings semánticos (job `embed`): `bge-m3` vía Ollama embebe
+  sinopsis+transcript (1024 dims) y los guarda en `Video.embedding` (pgvector)
+  con índice HNSW (`vector_cosine_ops`)
+- Búsqueda pública `GET /search?q=&mode=text|semantic` (módulo `search`, HU-07,
+  §6.3): modo `text` con `tsvector` español (columna generada `searchVector` +
+  índice GIN, ordenado por `ts_rank`) y modo `semantic` por distancia coseno
+  (`<=>`) con umbral para descartar ruido. Solo videos `PUBLISHED`; la
+  proyección nunca expone `storageKey`
+- Flujo de revisión del uploader (HU-04): `GET /videos/:id/review` (solo el
+  dueño) devuelve el video con las sugerencias IA y la transcripción;
+  `PATCH /videos/:id` ahora también edita `synopsis` y `tags` antes de publicar
+- Lib compartida `@app/ai`: `EmbeddingsService` (bge-m3, usado por worker y API)
+  y el puerto `MetadataGenerator` + `OllamaMetadataGenerator`
+- Servicio `ollama` en `docker-compose.yml` (`infra/ollama`): baja
+  `qwen2.5:3b-instruct` y `bge-m3` al primer arranque (cacheados en volumen),
+  healthcheck que gatea al worker hasta que los modelos están listos. El stack
+  IA sigue sin necesitar ninguna API key — costo $0 (plan.md §7)
+- Tests unitarios de los nuevos processors (`metadata`, `embed`) y del adaptador
+  Ollama; e2e de búsqueda (texto y semántico, este último hermético: el servicio
+  de embeddings se sobreescribe para no depender de Ollama) y del flujo de
+  revisión del uploader
+- Script de demo `scripts/metadata-search-demo.mjs`: sube un video con voz,
+  espera el pipeline completo y comprueba que la búsqueda semántica lo encuentra
+  sin coincidencia de título
+
+### Changed
+- `Video` gana `synopsis`, `tags`, `embedding` (`vector(1024)`) y la columna
+  generada `searchVector` (`tsvector`); migración `20260613193000_add_metadata_search`
+- El job `transcribe` ya NO deja el video en `READY` al terminar: encola
+  `metadata` y el video sigue `PROCESSING` hasta el final del pipeline
+
 ## [0.5.0] - 2026-06-13
 
 ### Added

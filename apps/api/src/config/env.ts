@@ -36,6 +36,13 @@ const envSchema = z.object({
   S3_BUCKET: z.string().min(1),
   // Límite de subida configurable por env (plan.md §8).
   MAX_VIDEO_SIZE_MB: z.coerce.number().int().positive().default(500),
+
+  // --- Ollama (F5): la API embebe la QUERY de la búsqueda semántica con el
+  // mismo bge-m3 que indexó los videos en el worker. No genera metadata (eso
+  // es del worker), por eso aquí no va METADATA_MODEL. ---
+  OLLAMA_URL: z.url(),
+  EMBED_MODEL: z.string().min(1).default('bge-m3'),
+  OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -157,6 +157,21 @@ export class VideosService {
   }
 
   /**
+   * Detalle del video para el DUEÑO (HU-04, flujo de revisión F5). A diferencia
+   * del detalle público del catálogo (solo PUBLISHED, proyección recortada),
+   * aquí el uploader ve su video en cualquier estado con las sugerencias IA
+   * (synopsis, categorías, tags) y la transcripción, para editarlas con PATCH
+   * antes de publicar. Va en /videos/:id/review (no /videos/:id, que es público).
+   */
+  async getReview(id: string, userId: string) {
+    await this.getOwned(id, userId);
+    return this.prisma.video.findUnique({
+      where: { id },
+      include: { transcript: true },
+    });
+  }
+
+  /**
    * Publica un video (HU-06): pasa de READY a PUBLISHED y sella `publishedAt`.
    * Solo desde READY — publicar algo aún UPLOADING (sin bytes confirmados) o ya
    * PUBLISHED no tiene sentido y devuelve 409. El flujo de revisión del

@@ -76,6 +76,8 @@ services:
       S3_ACCESS_KEY: libreplay
       S3_SECRET_KEY: libreplay123
       S3_BUCKET: videos
+      # Ollama para la búsqueda semántica (F5): la API embebe la QUERY con bge-m3.
+      OLLAMA_URL: http://ollama:11434
     volumes:
       - .:/app
       # Truco importante: este volumen anónimo "tapa" node_modules del host.
@@ -88,6 +90,11 @@ services:
       redis:
         condition: service_started
       minio:
+        condition: service_started
+      # service_started (no _healthy): la API arranca sin esperar el pull de
+      # modelos (~4 GB). Solo la búsqueda semántica necesita Ollama listo; el
+      # resto de la API funciona igual.
+      ollama:
         condition: service_started
 
   # Contenedor de transcripción (F4): faster-whisper tras una API HTTP. El
@@ -132,6 +139,8 @@ services:
       S3_BUCKET: videos
       # whisper por la red interna de compose.
       WHISPER_URL: http://whisper:8081
+      # Ollama: el worker genera metadata (LLM) y embeddings (bge-m3).
+      OLLAMA_URL: http://ollama:11434
     volumes:
       - .:/app
       - /app/node_modules
@@ -144,11 +153,37 @@ services:
         condition: service_started
       whisper:
         condition: service_healthy
+      # _healthy: el worker SÍ espera a que los modelos estén bajados — sin
+      # ellos, metadata y embed fallarían en el primer job.
+      ollama:
+        condition: service_healthy
 
-  # DEUDA (planificada): falta `ollama` (F5, metadata + embeddings). Se agrega
-  # cuando su fase lo use — no antes, para no pagar su arranque mientras no se usa.
+  # Ollama (F5): metadata (qwen2.5:3b-instruct) + embeddings (bge-m3). Modelos
+  # locales, sin API key — costo $0 (plan.md §2/§7). El entrypoint los baja al
+  # primer arranque y quedan en el volumen. Es, con whisper, el servicio pesado.
+  ollama:
+    build:
+      context: ./infra/ollama
+      dockerfile: Dockerfile
+    ports:
+      - '11434:11434'
+    volumes:
+      # Cachea modelos (~4 GB) entre reinicios; sin esto, re-pull en cada arranque.
+      - ollama-data:/root/.ollama
+    healthcheck:
+      # Sano solo cuando AMBOS modelos están presentes: gatea al worker hasta
+      # que el pipeline IA tenga con qué trabajar.
+      test:
+        - CMD-SHELL
+        - 'ollama list | grep -q bge-m3 && ollama list | grep -q qwen2.5'
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      # start_period largo: el pull inicial de ~4 GB tarda según la red.
+      start_period: 600s
 
 volumes:
   postgres-data:
   minio-data:
   whisper-cache:
+  ollama-data:

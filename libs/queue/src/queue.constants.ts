@@ -10,4 +10,8 @@
 // F4: extracción de audio + faster-whisper.
 export const TRANSCRIBE_QUEUE = 'transcribe';
 
-// F5 añadirá METADATA_QUEUE ('metadata') y EMBED_QUEUE ('embed').
+// F5: segundo y tercer eslabón del pipeline (plan.md §5). El worker encadena
+// transcribe → metadata → embed; cada etapa es una cola propia con reintentos
+// y fallo aislado. Mismos nombres compartidos productor↔consumidor.
+export const METADATA_QUEUE = 'metadata'; // Ollama LLM: sinopsis + categorías + tags.
+export const EMBED_QUEUE = 'embed'; // Ollama bge-m3: vector → pgvector.

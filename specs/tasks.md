@@ -59,13 +59,13 @@
 
 ## Fase 5 — Metadata IA y búsqueda (HU-04, HU-07)
 
-- [ ] Puerto `MetadataGenerator` + adaptador Ollama (`qwen2.5:3b-instruct`, JSON forzado por schema + Zod)
-- [ ] Job `metadata`: sinopsis, categorías (enum cerrado), tags sugeridos
-- [ ] Job `embed`: Ollama `bge-m3` → `embedding` en pgvector + índice HNSW
-- [ ] Flujo de revisión del uploader: editar sugerencias antes de publicar (HU-04)
-- [ ] `GET /search`: modo texto (tsvector) y modo semántico (coseno + umbral) (§6.3)
+- [x] Puerto `MetadataGenerator` + adaptador Ollama (`qwen2.5:3b-instruct`, JSON forzado por schema + Zod)
+- [x] Job `metadata`: sinopsis, categorías (enum cerrado), tags sugeridos
+- [x] Job `embed`: Ollama `bge-m3` → `embedding` en pgvector + índice HNSW
+- [x] Flujo de revisión del uploader: editar sugerencias antes de publicar (HU-04) _(`GET /videos/:id/review` + `PATCH` de synopsis/tags)_
+- [x] `GET /search`: modo texto (tsvector) y modo semántico (coseno + umbral) (§6.3)
 
-**Demo:** buscar "robot que aprende a sentir" encuentra el video correcto sin coincidencia de título.
+**Demo:** buscar "robot que aprende a sentir" encuentra el video correcto sin coincidencia de título. _(verificada con `scripts/metadata-search-demo.mjs`)_
 **Release:** `v0.6.0`
 
 ## Fase 6 — Favoritos, historial y admin (HU-08, HU-09, HU-10)

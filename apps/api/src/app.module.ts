@@ -6,6 +6,7 @@ import { redisConnection } from '@app/queue';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { HealthController } from './health/health.controller';
+import { SearchModule } from './search/search.module';
 import { StreamModule } from './stream/stream.module';
 import { VideosModule } from './videos/videos.module';
 
@@ -23,6 +24,7 @@ import { VideosModule } from './videos/videos.module';
  * - VideosModule (F2): subida por presigned PUT y gestión del uploader.
  * - CatalogModule (F3): catálogo público (listado + detalle).
  * - StreamModule (F3): URL prefirmada de reproducción (Range → 206).
+ * - SearchModule (F5): búsqueda pública por texto y semántica.
  */
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { VideosModule } from './videos/videos.module';
     VideosModule,
     CatalogModule,
     StreamModule,
+    SearchModule,
   ],
   controllers: [HealthController],
 })
