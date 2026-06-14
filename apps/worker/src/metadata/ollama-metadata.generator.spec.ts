@@ -45,7 +45,14 @@ describe('OllamaMetadataGenerator', () => {
     expect(result.tags).toEqual(['robot', 'emociones']);
 
     expect(requestUrl).toMatch(/\/api\/chat$/);
-    expect(JSON.parse(requestBody)).toHaveProperty('format');
+    // El `format` va SANEADO para la gramática de Ollama: sin $schema ni
+    // additionalProperties ni constraints de longitud (rompen la conversión a
+    // GBNF y el modelo deja de respetar el enum). El enum de categorías sí va.
+    const format = (JSON.parse(requestBody) as { format: Record<string, unknown> }).format;
+    expect(format).not.toHaveProperty('$schema');
+    expect(format).not.toHaveProperty('additionalProperties');
+    expect(JSON.stringify(format)).not.toContain('maxLength');
+    expect(JSON.stringify(format)).toContain('CINE');
   });
 
   it('JSON inválido del LLM → error legible', async () => {

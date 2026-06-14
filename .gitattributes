@@ -1,0 +1,4 @@
+# Los scripts de shell SIEMPRE con LF: van dentro de imágenes Docker (Linux) y
+# CRLF rompe el shebang/`set` (autocrlf de Git en Windows los convertía a CRLF
+# en el checkout y el contenedor fallaba al arrancar).
+*.sh text eol=lf

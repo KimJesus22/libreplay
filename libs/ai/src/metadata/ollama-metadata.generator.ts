@@ -4,10 +4,39 @@ import { Category } from '@prisma/client';
 import type { MetadataGenerator, MetadataInput } from './metadata-generator';
 import { VideoMetadataSchema, type VideoMetadata } from './video-metadata.schema';
 
+// Palabras clave del JSON Schema que Ollama NO soporta al convertirlo a
+// gramática GBNF: con ellas presentes, el modelo deja de respetar el `enum` de
+// categorías (devuelve "Historia"/"Política" fuera de la lista) e incluso
+// objetos vacíos. Las quitamos para Ollama; la longitud/cardinalidad la sigue
+// validando Zod de nuestro lado tras recibir la respuesta.
+const UNSUPPORTED_SCHEMA_KEYS = new Set([
+  '$schema',
+  'additionalProperties',
+  'minLength',
+  'maxLength',
+  'minItems',
+  'maxItems',
+  'minimum',
+  'maximum',
+]);
+
+function sanitizeSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeSchema);
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      if (UNSUPPORTED_SCHEMA_KEYS.has(key)) continue;
+      out[key] = sanitizeSchema(child);
+    }
+    return out;
+  }
+  return value;
+}
+
 // JSON Schema derivado del schema Zod UNA vez (no por petición): es la salida
-// estructurada que Ollama debe respetar (`format`). zod v4 lo trae de serie,
-// sin la dependencia zod-to-json-schema.
-const METADATA_JSON_SCHEMA = z.toJSONSchema(VideoMetadataSchema);
+// estructurada que Ollama debe respetar (`format`). zod v4 lo genera (sin la
+// dependencia zod-to-json-schema); lo saneamos para la gramática de Ollama.
+const METADATA_JSON_SCHEMA = sanitizeSchema(z.toJSONSchema(VideoMetadataSchema));
 
 // Lista de categorías para el prompt: el LLM debe elegir SOLO de aquí. El
 // `format` ya lo fuerza, pero nombrarlas en el prompt mejora la elección.

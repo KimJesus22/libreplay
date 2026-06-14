@@ -8,11 +8,12 @@ import { WhisperClient } from './whisper.client';
 
 /**
  * Módulo del job `transcribe` (F4). Registra la cola `transcribe` para que el
- * @Processor cree el Worker BullMQ atado a ella, y la cola `metadata` para
- * poder ENCOLAR el siguiente eslabón con @InjectQueue (F5). Ninguna lleva
- * defaultJobOptions aquí: el productor real (la API, que arranca el pipeline)
- * ya las fija; el worker re-encola con las mismas opciones por defecto de BullMQ.
- * PrismaModule es global, pero StorageModule se importa explícito (baja el MP4).
+ * @Processor cree el Worker BullMQ atado a ella, y la cola `metadata` (con sus
+ * defaultJobOptions, porque aquí se ENCOLA el siguiente eslabón con @InjectQueue):
+ * 3 reintentos con backoff exponencial, igual que el productor de transcribe en
+ * la API — un fallo transitorio del LLM (Ollama saturado, un JSON que no validó)
+ * no debe tumbar la metadata al primer intento (plan.md §5). PrismaModule es
+ * global, pero StorageModule se importa explícito (baja el MP4).
  */
 @Module({
   imports: [
@@ -20,7 +21,14 @@ import { WhisperClient } from './whisper.client';
     StorageModule,
     BullModule.registerQueue(
       { name: TRANSCRIBE_QUEUE },
-      { name: METADATA_QUEUE },
+      {
+        name: METADATA_QUEUE,
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnComplete: true,
+        },
+      },
     ),
   ],
   providers: [TranscriptionProcessor, WhisperClient],
